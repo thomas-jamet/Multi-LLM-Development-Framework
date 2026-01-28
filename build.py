@@ -19,7 +19,7 @@ from typing import List, Tuple
 
 
 SOURCE_DIR = Path(".")
-OUTPUT_FILE = Path("../bootstrap.py")
+OUTPUT_FILE = Path("bootstrap.py")
 VERSION = "2026.26"
 
 
