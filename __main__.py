@@ -30,6 +30,77 @@ EXIT_UNEXPECTED_ERROR = 255
 USE_COLOR = True
 
 
+def run_self_tests():
+    """Run internal self-tests for the bootstrap script.
+    
+    Tests core functionality without external dependencies.
+    Returns exit code 0 on success, 1 on failure.
+    """
+    print("🧪 Running Bootstrap Self-Tests...\n")
+    
+    passed = 0
+    failed = 0
+    
+    def test(name, condition):
+        nonlocal passed, failed
+        if condition:
+            print(f"  ✅ {name}")
+            passed += 1
+        else:
+            print(f"  ❌ {name}")
+            failed += 1
+    
+    # Test 1: Version format
+    test("VERSION format (YYYY.NN)", 
+         len(VERSION.split(".")) == 2 and VERSION.split(".")[0].isdigit())
+    
+    # Test 2: Tier definitions exist
+    test("TIERS defined with 3 tiers", 
+         len(TIERS) == 3 and all(k in TIERS for k in ["1", "2", "3"]))
+    
+    # Test 3: Each tier has required keys
+    for tier_id, tier_data in TIERS.items():
+        test(f"Tier {tier_id} has 'name' key", "name" in tier_data)
+    
+    # Test 4: Exit codes defined
+    test("EXIT_SUCCESS is 0", EXIT_SUCCESS == 0)
+    test("EXIT_VALIDATION_ERROR is non-zero", EXIT_VALIDATION_ERROR != 0)
+    
+    # Test 5: Project name validation (if available)
+    try:
+        # Valid names should pass
+        validate_project_name("my-project")
+        test("validate_project_name accepts valid name", True)
+    except NameError:
+        test("validate_project_name available", False)
+    except ValidationError:
+        test("validate_project_name accepts valid name", False)
+    
+    try:
+        # Invalid names should fail
+        validate_project_name("123-invalid")
+        test("validate_project_name rejects invalid name", False)
+    except NameError:
+        pass  # Already reported above
+    except ValidationError:
+        test("validate_project_name rejects invalid name", True)
+    
+    # Test 6: Template consistency
+    for tmpl_name, tmpl_config in TEMPLATES.items():
+        test(f"Template '{tmpl_name}' has tier", "tier" in tmpl_config)
+    
+    # Summary
+    print(f"\n{'='*50}")
+    print(f"Results: {passed} passed, {failed} failed")
+    
+    if failed > 0:
+        print("\n❌ Self-tests FAILED")
+        sys.exit(1)
+    else:
+        print("\n✅ All self-tests passed")
+        sys.exit(0)
+
+
 def main():
     try:
         _main_impl()

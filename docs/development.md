@@ -142,17 +142,17 @@ python3 ../bootstrap.py --list-templates
 cd /tmp
 
 # Tier 1 (Lite)
-python3 /srv/data/workspaces/bootstrap.py -t 1 -n test-lite -y
+python3 ../bootstrap.py -t 1 -n test-lite -y
 cd test-lite && make audit && cd ..
 rm -rf test-lite
 
 # Tier 2 (Standard)
-python3 /srv/data/workspaces/bootstrap.py -t 2 -n test-std -y
+python3 ../bootstrap.py -t 2 -n test-std -y
 cd test-std && make audit && make test && cd ..
 rm -rf test-std
 
 # Tier 3 (Enterprise)
-python3 /srv/data/workspaces/bootstrap.py -t 3 -n test-ent -y
+python3 ../bootstrap.py -t 3 -n test-ent -y
 cd test-ent && make audit && cd ..
 rm -rf test-ent
 ```
@@ -160,7 +160,7 @@ rm -rf test-ent
 #### Test 8: Template Application
 
 ```bash
-python3 /srv/data/workspaces/bootstrap.py -t 2 -n test-fastapi --from-template fastapi -y
+python3 ../bootstrap.py -t 2 -n test-fastapi --from-template fastapi -y
 cd test-fastapi
 grep -q "from fastapi import FastAPI" src/test_fastapi/main.py && echo "✅ Template applied"
 cd .. && rm -rf test-fastapi
@@ -169,8 +169,8 @@ cd .. && rm -rf test-fastapi
 #### Test 9: Workspace Validation
 
 ```bash
-python3 /srv/data/workspaces/bootstrap.py -t 2 -n test-validate -y
-python3 /srv/data/workspaces/bootstrap.py --validate test-validate
+python3 ../bootstrap.py -t 2 -n test-validate -y
+python3 ../bootstrap.py --validate test-validate
 # Expected: Validation passes
 rm -rf test-validate
 ```
@@ -178,8 +178,8 @@ rm -rf test-validate
 #### Test 10: Workspace Upgrade
 
 ```bash
-python3 /srv/data/workspaces/bootstrap.py -t 1 -n test-upgrade -y
-python3 /srv/data/workspaces/bootstrap.py --upgrade test-upgrade -t 2 -y
+python3 ../bootstrap.py -t 1 -n test-upgrade -y
+python3 ../bootstrap.py --upgrade test-upgrade -t 2 -y
 cd test-upgrade
 grep '"tier": "2"' .gemini/workspace.json && echo "✅ Upgraded"
 cd .. && rm -rf test-upgrade
@@ -196,12 +196,12 @@ set -e
 echo "🧪 Running Bootstrap Test Suite..."
 
 # Basic tests
-python3 /srv/data/workspaces/bootstrap.py --version
-python3 /srv/data/workspaces/bootstrap.py --run-self-tests
+python3 ../bootstrap.py --version
+python3 ../bootstrap.py --run-self-tests
 
 # Workspace creation
 for tier in 1 2 3; do
-    python3 /srv/data/workspaces/bootstrap.py -t $tier -n test-t$tier -y
+    python3 ../bootstrap.py -t $tier -n test-t$tier -y
     cd test-t$tier && make audit && cd ..
     rm -rf test-t$tier
 done

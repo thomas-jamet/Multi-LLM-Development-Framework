@@ -11,7 +11,7 @@ This document provides guidelines for developing and maintaining the modular sou
 ### 1. Build the Script
 
 ```bash
-cd /srv/data/workspaces/source-workspace
+cd source-workspace  # Or wherever you cloned this repository
 make build
 ```
 
@@ -127,17 +127,17 @@ Create test workspaces to verify functionality:
 cd /tmp  # Use system temp, not repo
 
 # Test Tier 1 (Lite)
-python3 /srv/data/workspaces/bootstrap.py -t 1 -n test-lite -y
+python3 ../path/to/bootstrap.py -t 1 -n test-lite -y
 cd test-lite && make audit && cd ..
 rm -rf test-lite
 
 # Test Tier 2 (Standard)
-python3 /srv/data/workspaces/bootstrap.py -t 2 -n test-standard -y
+python3 ../path/to/bootstrap.py -t 2 -n test-standard -y
 cd test-standard && make audit && cd ..
 rm -rf test-standard
 
 # Test Tier 3 (Enterprise)
-python3 /srv/data/workspaces/bootstrap.py -t 3 -n test-enterprise -y
+python3 ../path/to/bootstrap.py -t 3 -n test-enterprise -y
 cd test-enterprise && make audit && cd ..
 rm -rf test-enterprise
 ```

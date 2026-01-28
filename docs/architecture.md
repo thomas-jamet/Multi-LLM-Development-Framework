@@ -526,7 +526,7 @@ See `docs/roadmap.md` for detailed backlog.
 
 ## References
 
-- **Modular Source:** `/srv/data/workspaces/source-workspace/`
+- **Modular Source:** This repository (`source-workspace/`)
 - **Build Script:** `build.py`
 - **Compiled Output:** `../bootstrap.py`
 - **Original Monolith:** `20260125 - Gemini - Unified Workspace Bootstrap Script.py`

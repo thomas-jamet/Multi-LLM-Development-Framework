@@ -316,7 +316,7 @@ module_order = [
 
 ### File Locations
 
-- **Source:** `/srv/data/workspaces/source-workspace/`
+- **Source:** This repository (`source-workspace/`)
 - **Compiled:** `../bootstrap.py`
 - **Build Script:** `build.py`
 - **Tests:** `tests/` (to be implemented)
