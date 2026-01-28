@@ -68,7 +68,9 @@ EXECUTABLE_FILES = [
     "scripts/session.py",
     "scripts/doc_indexer.py",
     "scripts/status.py",
-    "scripts/list_skills.py"
+    "scripts/list_skills.py",
+    "scripts/skill_manager.py",
+    "scripts/skill_explorer.py"
 ]
 
 # Color Codes for Terminal Output

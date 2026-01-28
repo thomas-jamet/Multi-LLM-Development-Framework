@@ -10,7 +10,6 @@ import argparse
 import json
 from pathlib import Path
 
-
 # Version constant (imported from config in final build)  
 VERSION = "2026.26"
 DEFAULT_PYTHON_VERSION = "3.11"
@@ -25,6 +24,7 @@ EXIT_CONFIG_ERROR = 5
 EXIT_WORKSPACE_ERROR = 6
 EXIT_INTERRUPT = 130
 EXIT_UNEXPECTED_ERROR = 255
+
 
 # Global USE_COLOR flag (imported from core in final build)
 USE_COLOR = True

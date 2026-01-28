@@ -567,6 +567,10 @@ search: ## Search codebase for q="term"
 	@if [ -z "$(q)" ]; then echo "$(RED)❌ Error: q=\\"...\\" is required$(NC)" && exit 1; fi
 	@grep -rnE "$(q)" src/ tests/ docs/ || echo "$(YELLOW)No matches found for '$(q)'$(NC)"
 
+# PURPOSE: Discover new skills from external repositories.
+discover: ## Discover external skills (q="topic")
+	@python3 scripts/skill_explorer.py search "$(q)"
+
 # PURPOSE: List all TODOs and FIXMEs in the codebase.
 list-todos: ## List all 'TODO' and 'FIXME' tags in the code
 	@echo "$(BLUE)📝 Current Codebase Tasks:$(NC)"

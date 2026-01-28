@@ -750,6 +750,12 @@ def _build_workspace_files(
     files["scripts/doc_indexer.py"] = get_doc_indexer_script()
     files["scripts/status.py"] = get_status_script()
     files["scripts/list_skills.py"] = get_list_skills_script()
+    files["scripts/skill_manager.py"] = get_skill_manager_script()
+    
+    # Discovery (Standard & Enterprise only)
+    if tier != "1":
+        files["scripts/skill_explorer.py"] = get_skill_explorer_script()
+        files[".agent/workflows/discover_skills.md"] = get_skill_discovery_workflow()
     
     # Documentation
     files["docs/roadmap.md"] = f"# Roadmap: {name}\n\n- [ ] Initial Setup"
