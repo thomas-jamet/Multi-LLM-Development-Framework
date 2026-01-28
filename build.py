@@ -44,13 +44,34 @@ def read_module(path: Path) -> Tuple[str, List[str], str]:
     
     for line in lines:
         # Track docstrings
-        if line.strip().startswith('"""') or line.strip().startswith("'''"):
-            marker = '"""' if '"""' in line else "'''"
+        # Track docstrings/strings
+        stripped = line.strip()
+        is_string_start = False
+        marker = None
+        
+        # Check for string start with prefixes
+        for prefix in ['', 'f', 'r', 'fr', 'rf', 'b']:
+            if stripped.startswith(f"{prefix}'''"):
+                marker = "'''"
+                is_string_start = True
+                break
+            elif stripped.startswith(f'{prefix}"""'):
+                marker = '"""'
+                is_string_start = True
+                break
+        
+        if is_string_start:
             if not in_docstring:
                 in_docstring = True
                 docstring_marker = marker
                 code_lines.append(line)
-            elif marker == docstring_marker and line.strip().endswith(marker):
+                # Check if it closes on the same line
+                # Must end with marker, and be longer than just the start sequence
+                start_seq = line.strip().split(marker)[0] + marker # crude approx but handles prefix
+                if len(stripped) > len(start_seq) and stripped.endswith(marker):
+                     in_docstring = False
+                     docstring_marker = None
+            elif marker == docstring_marker and stripped.endswith(marker):
                 in_docstring = False
                 docstring_marker = None
                 code_lines.append(line)

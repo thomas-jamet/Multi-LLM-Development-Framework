@@ -178,51 +178,146 @@ jobs:
 
 def get_audit_script() -> str:
     """Generate workspace audit script."""
-    return '''#!/usr/bin/env python3
-"""Workspace structure auditor - validates against Gemini Standard.
-
-This script validates workspace directory structure and configuration.
-
-Exit Codes:
-    0: Audit passed (with or without warnings)
-    1: Audit failed with errors
-
-Implementation Note:
-    This script uses sys.exit() because it's designed to run as a standalone
-    CLI tool, not as an importable library module. This is the appropriate
-    pattern for command-line scripts that need to communicate success/failure
-    to the calling process via exit codes.
-
-Issue Severity Levels:
-- ERROR: Critical issues that break workspace functionality (exit code 1)
-- WARNING: Non-critical issues that should be addressed (exit code 0)
-"""
-import json
+    return (
+        '''#!/usr/bin/env python3
+"""Workspace structure auditor - validates against Gemini Standard."""
 import os
 import sys
 from pathlib import Path
 
-# Respect NO_COLOR environment variable
-USE_COLOR = not os.environ.get("NO_COLOR")
+def main():
+    print("🔍 Auditing workspace structure...")
+    errors = 0
+    
+    # Check core files
+    required = ["GEMINI.md", "Makefile", ".gemini/workspace.json"]
+    for f in required:
+        if not Path(f).exists():
+            print(f"❌ Missing core file: {f}")
+            errors += 1
+            
+    # Check directories
+    required_dirs = ["logs", "docs"]
+    for d in required_dirs:
+        if not Path(d).exists():
+            print(f"❌ Missing directory: {d}/")
+            errors += 1
+            
+    if errors == 0:
+        print("✅ Audit passed.")
+        sys.exit(0)
+    else:
+        print(f"❌ Audit failed with {errors} errors.")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+'''
+    )
 
 def get_session_script() -> str:
     """Generate session management script."""
-    return '''#!/usr/bin/env python3
+    return (
+        '''#!/usr/bin/env python3
 """Session management for Gemini workspaces."""
+import argparse
 import json
-import getpass
 import os
-import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Respect NO_COLOR environment variable
-USE_COLOR = not os.environ.get("NO_COLOR")
+def load_sessions():
+    log_path = Path("logs/sessions/history.json")
+    if log_path.exists():
+        try:
+            with open(log_path) as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            pass
+    return []
+
+def save_session(entry):
+    log_dir = Path("logs/sessions")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    history = load_sessions()
+    history.append(entry)
+    
+    with open(log_dir / "history.json", "w") as f:
+        json.dump(history, f, indent=2)
+        
+    # Also append to human readable log
+    with open(log_dir / "session.log", "a") as f:
+        f.write(f"[{entry['timestamp']}] {entry['action'].upper()}: {entry['message']}\\n")
+
+def get_git_status():
+    try:
+        # Get brief stats
+        res = subprocess.run(
+            ["git", "diff", "--shortstat"], 
+            capture_output=True, text=True
+        )
+        if res.stdout.strip():
+            return f"Auto-generated: {res.stdout.strip()}"
+            
+        # If no diff, maybe staged changes?
+        res = subprocess.run(
+            ["git", "diff", "--cached", "--shortstat"],
+            capture_output=True, text=True
+        )
+        if res.stdout.strip():
+            return f"Auto-generated (staged): {res.stdout.strip()}"
+            
+        return "Session ended (no changes detected)"
+    except FileNotFoundError:
+        return "Session ended (git not available)"
+
+def start_session(msg):
+    message = msg if msg else "Session started"
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": "start",
+        "message": message
+    }
+    save_session(entry)
+    print(f"🚀 Session started: {message}")
+
+def end_session(msg):
+    message = msg if msg else get_git_status()
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": "end",
+        "message": message
+    }
+    save_session(entry)
+    print(f"🎬 Session ended: {message}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Session Manager")
+    parser.add_argument("command", choices=["start", "end", "force-end-all"])
+    parser.add_argument("msg", nargs="?", default="", help="Session message")
+    
+    args = parser.parse_args()
+    
+    if args.command == "start":
+        start_session(args.msg)
+    elif args.command == "end":
+        end_session(args.msg)
+    elif args.command == "force-end-all":
+        print("Force ending all sessions...")
+
+if __name__ == "__main__":
+    main()
+'''
+    )
+
 
 def get_doc_indexer_script() -> str:
     """Generate document indexer script."""
-    return r"""#!/usr/bin/env python3
+    return (
+        r"""#!/usr/bin/env python3
 import os
 from pathlib import Path
 
@@ -279,10 +374,12 @@ def generate_index():
 if __name__ == "__main__":
     generate_index()
 """
+    )
 
 def get_status_script() -> str:
     """Generate workspace status script with health dashboard."""
-    return '''#!/usr/bin/env python3
+    return (
+        '''#!/usr/bin/env python3
 """Show workspace status with health dashboard."""
 import json
 import os
@@ -295,6 +392,14 @@ USE_COLOR = not os.environ.get("NO_COLOR")
 
 def _c(code: str) -> str:
     return code if USE_COLOR else ""
+
+# Pre-define colors to avoid backslashes in f-strings (Py3.11 compatibility)
+BLUE = _c('\\033[1;34m')
+GREEN = _c('\\033[1;32m')
+YELLOW = _c('\\033[1;33m')
+RED = _c('\\033[1;31m')
+CYAN = _c('\\033[1;36m')
+RESET = _c('\\033[0m')
 
 def get_git_info():
     """Get git branch and status info."""
@@ -386,7 +491,7 @@ def calculate_health_score():
 
 
 if __name__ == "__main__":
-    print(f"{_c('\\033[1;36m')}📊 Workspace Status{_c('\\033[0m')}\\n")
+    print(f"{CYAN}📊 Workspace Status{RESET}\\n")
     
     # Workspace metadata
     workspace_file = Path(".gemini/workspace.json")
@@ -413,29 +518,31 @@ if __name__ == "__main__":
     print()
     score, issues = calculate_health_score()
     if score >= 90:
-        indicator = f"{_c('\\033[1;32m')}🟢"
+        indicator = f"{GREEN}🟢"
         rating = "Excellent"
     elif score >= 70:
-        indicator = f"{_c('\\033[1;33m')}🟡"
+        indicator = f"{YELLOW}🟡"
         rating = "Good"
     elif score >= 50:
-        indicator = f"{_c('\\033[1;33m')}🟠"
+        indicator = f"{YELLOW}🟠"
         rating = "Fair"
     else:
-        indicator = f"{_c('\\033[1;31m')}🔴"
+        indicator = f"{RED}🔴"
         rating = "Needs Attention"
     
-    print(f"Health: {indicator} {score}/100 ({rating}){_c('\\033[0m')}")
+    print(f"Health: {indicator} {score}/100 ({rating}){RESET}")
     
     if issues:
         print("\\nIssues:")
         for issue in issues:
             print(f"  • {issue}")
 '''
+    )
 
 def get_list_skills_script() -> str:
     """Generate cross-platform list-skills script."""
-    return '''#!/usr/bin/env python3
+    return (
+        '''#!/usr/bin/env python3
 """List available skills and workflows (cross-platform)."""
 from pathlib import Path
 
@@ -457,6 +564,7 @@ if __name__ == "__main__":
     list_items(".agent/patterns", "Available Patterns", "🎨")
     print()
 '''
+    )
 
 def get_workspace_schema() -> str:
     """Generate JSON schema for workspace.json validation and IDE autocomplete."""

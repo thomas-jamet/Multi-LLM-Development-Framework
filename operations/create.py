@@ -10,6 +10,9 @@ from typing import Dict, List
 import os
 import json
 from datetime import datetime, timezone
+import shutil
+import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def create_workspace(
@@ -704,3 +707,107 @@ def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = Fa
 
 
 # --- EXPORT WORKSPACE AS TEMPLATE ---
+# --- INTERNAL HELPER FUNCTIONS ---
+
+def _build_workspace_directories(tier: str, pkg_name: str) -> List[str]:
+    """Build list of directories to create."""
+    dirs = get_all_directories(tier)
+    if tier != "1":
+        dirs.append(f"src/{pkg_name}")
+    return sorted(list(set(dirs)))
+
+def _build_workspace_files(
+    tier: str,
+    name: str,
+    pkg_name: str,
+    parent: str | None,
+    python_version: str,
+    template_files: dict | None,
+    template_deps: list | None
+) -> Dict[str, str]:
+    """Build dictionary of {path: content} for all workspace files."""
+    files = {}
+    
+    # Core
+    files["GEMINI.md"] = get_gemini_md(tier, pkg_name)
+    files["Makefile"] = get_makefile(tier, pkg_name)
+    files["README.md"] = f"# {name}\n\nGenerated Gemini Workspace ({TIERS[tier]['name']})\n"
+    files[".gitignore"] = "\n".join(GITIGNORE_PATTERNS)
+    
+    # Configuration
+    files[".gemini/workspace.json"] = json.dumps({
+        "version": VERSION,
+        "tier": tier,
+        "name": name,
+        "created": datetime.now(timezone.utc).astimezone().isoformat(),
+        "standard": "Gemini Native Workspace Standard",
+        "parent_workspace": parent
+    }, indent=2)
+    
+    # Scripts
+    files["scripts/audit.py"] = get_audit_script()
+    files["scripts/session.py"] = get_session_script()
+    files["scripts/doc_indexer.py"] = get_doc_indexer_script()
+    files["scripts/status.py"] = get_status_script()
+    files["scripts/list_skills.py"] = get_list_skills_script()
+    
+    # Documentation
+    files["docs/roadmap.md"] = f"# Roadmap: {name}\n\n- [ ] Initial Setup"
+    
+    # CI/CD
+    files[".github/workflows/ci.yml"] = get_github_workflow(tier, python_version)
+    
+    # Python files for Tier 2+
+    if tier != "1":
+        files["pyproject.toml"] = f'[project]\nname = "{pkg_name}"\nversion = "0.1.0"\nrequires-python = ">={python_version}"\ndependencies = []'
+        files[f"src/{pkg_name}/__init__.py"] = ""
+        files[f"src/{pkg_name}/main.py"] = """def main():
+    print("Hello World")
+
+if __name__ == "__main__":
+    main()
+"""
+        
+        # Tests
+        if tier == "2":
+            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(pkg_name)
+            files[f"tests/integration/test_integration.py"] = get_standard_integration_test_example(pkg_name)
+        elif tier == "3":
+            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(pkg_name)
+            files[f"tests/integration/test_integration.py"] = get_standard_integration_test_example(pkg_name)
+            files[f"tests/evals/test_evals.py"] = get_enterprise_eval_test_example(pkg_name)
+    else:
+        files["src/main.py"] = 'print("Hello World")'
+        files["requirements.txt"] = "\n".join(DEFAULT_REQUIREMENTS["1"])
+        
+    return files
+
+def _write_file_safe(base: Path, path_str: str, content: str):
+    """Write file safely with error handling (for thread pool)."""
+    target = base / path_str
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        if path_str in EXECUTABLE_FILES:
+            target.chmod(0o755)
+        return path_str, None
+    except Exception as e:
+        return path_str, str(e)
+
+def show_dry_run_summary(tier, name, template_name, cwd):
+    header(f"Dry Run: Creating {name}")
+    print(f"Tier: {tier} ({TIERS[tier]['name']})")
+    print(f"Path: {cwd}/{name}")
+
+def log_bootstrap_event(*args, **kwargs):
+    pass # Telemetry placeholder
+
+def get_shift_report_script():
+    return "# Shift Report\n"
+
+def get_vscode_settings():
+    return "{}"
+
+def get_settings(tier):
+    return "{}"
+

@@ -19,6 +19,7 @@ from functools import lru_cache
 # Version constant
 VERSION = "2026.26"
 DEFAULT_PYTHON_VERSION = "3.11"
+VALID_PYTHON_VERSION_PATTERN = re.compile(r"^3\.\d+$")
 
 # Global flag for color output
 USE_COLOR: bool = os.environ.get("NO_COLOR") is None

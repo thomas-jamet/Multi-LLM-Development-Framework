@@ -100,14 +100,12 @@ doctor: ## Diagnose common issues and check structure
 
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
-session-start: ## Begin a tracked work session (use msg="...")
-	@if [ -z "$(msg)" ]; then echo "$(RED)❌ Error: msg=\\"...\\" is required for session-start$(NC)" && exit 1; fi
+session-start: ## Begin a tracked work session (optional msg="...")
 	@python3 scripts/session.py start -- "${msg}"
 
 # PURPOSE: finalize your work, index it, and sync to GitHub (Lite tier - no quality gates).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
-session-end: ## Close session: indices docs, commits & pushes
-	@if [ -z "$(msg)" ]; then echo "$(RED)❌ Error: msg=\\"...\\" required$(NC)" && exit 1; fi
+session-end: ## Close session: indices docs, commits & pushes (optional msg="...")
 	@echo "$(BLUE)📤 Finalizing workspace...$(NC)"
 	@python3 scripts/doc_indexer.py
 	@python3 scripts/audit.py
@@ -157,7 +155,7 @@ run: ## Execute the primary application (src/{{project_name}}/main.py)
 # WHEN: Run before finishing every work session.
 test: ## Run the full pytest suite in tests/
 	@echo "$(BLUE)🧪 Running tests...$(NC)"
-	@pytest tests/
+	@PYTHONPATH=. pytest tests/
 
 # PURPOSE: Continuous test feedback during coding.
 test-watch: ## Run tests and re-run on file changes (requires pytest-watch)
@@ -237,14 +235,12 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
-session-start: ## Begin a tracked work session (use msg="...")
-	@if [ -z "$(msg)" ]; then echo "$(RED)❌ Error: msg=\\"...\\" is required for session-start$(NC)" && exit 1; fi
-	@python3 scripts/session.py start -- "${msg}"
+session-start: ## Begin a tracked work session (optional msg="...")
+	@python3 scripts/session.py start -- "${{msg}}"
 
 # PURPOSE: finalize your work, runs quality checks, and sync to GitHub (Standard tier).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
-session-end: ## Close session: runs lint/tests, commits & pushes
-	@if [ -z "$(msg)" ]; then echo "$(RED)❌ Error: msg=\\"...\\" required$(NC)" && exit 1; fi
+session-end: ## Close session: runs lint/tests, commits & pushes (optional msg="...")
 	@echo "$(BLUE)📤 Finalizing workspace...$(NC)"
 	@echo "$(BLUE)🧹 Linting...$(NC)"
 	@$(MAKE) lint || ( echo "$(RED)❌ Linting failed$(NC)" && exit 1 )
@@ -256,7 +252,7 @@ session-end: ## Close session: runs lint/tests, commits & pushes
 	@if [ -d .git ]; then \\
 		git add .; \\
 		if [ -n "$$(git status --porcelain)" ]; then \\
-			git commit -m "session end: ${msg}"; \\
+			git commit -m "session end: ${{msg}}"; \\
 		else \\
 			echo "$(GREEN)✨ Workspace clean$(NC)"; \\
 		fi; \\
@@ -264,7 +260,7 @@ session-end: ## Close session: runs lint/tests, commits & pushes
 	else \\
 			echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${msg}"
+	@python3 scripts/session.py end -- "${{msg}}"
 	@echo "$(GREEN)✅ Quality checks passed!$(NC)"
 
 # ==============================================================================
@@ -275,12 +271,12 @@ session-end: ## Close session: runs lint/tests, commits & pushes
 # WHEN: Use before major or risky changes.
 snapshot: ## Create an immutable local backup of your workspace state
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for snapshot$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py create "${name}"
+	@python3 scripts/snapshot.py create "${{name}}"
 
 # PURPOSE: Revert to a previous "Save Point".
 restore: ## Revert workspace to a previous snapshot (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for restore$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py restore "${name}" $(if $(yes),--yes,)
+	@python3 scripts/snapshot.py restore "${{name}}" $(if $(yes),--yes,)
 
 # PURPOSE: Standard backup.
 backup: snapshot ## Alias for snapshot
@@ -315,7 +311,7 @@ scan: ## Run the internal CLI scanner (src/cli.py)
 # PURPOSE: Run comprehensive Enterprise test suite.
 test: ## Run the unit test suite in tests/unit/
 	@echo "$(BLUE)🧪 Running Enterprise unit tests...$(NC)"
-	@uv run pytest tests/unit/ || pytest tests/unit/
+	@uv run pytest tests/unit/ || PYTHONPATH=. pytest tests/unit/
 
 # PURPOSE: Continuous test feedback.
 test-watch: ## Run unit tests and re-run on file changes
@@ -398,14 +394,12 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
-session-start: ## Begin a tracked work session (use msg="...")
-	@if [ -z "$(msg)" ]; then echo "$(RED)❌ Error: msg=\\"...\\" is required for session-start$(NC)" && exit 1; fi
-	@python3 scripts/session.py start -- "${msg}"
+session-start: ## Begin a tracked work session (optional msg="...")
+	@python3 scripts/session.py start -- "${{msg}}"
 
 # PURPOSE: finalize your work, runs all quality checks, and sync to GitHub (Enterprise tier).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
-session-end: ## Close session: runs lint/tests/evals, commits & pushes
-	@if [ -z "$(msg)" ]; then echo "$(RED)❌ Error: msg=\\"...\\" required$(NC)" && exit 1; fi
+session-end: ## Close session: runs lint/tests/evals, commits & pushes (optional msg="...")
 	@echo "$(BLUE)📤 Finalizing workspace...$(NC)"
 	@echo "$(BLUE)🧹 Linting...$(NC)"
 	@ruff check . --fix || ( echo "$(RED)❌ Linting failed$(NC)" && exit 1 )
@@ -419,7 +413,7 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes
 	@if [ -d .git ]; then \\
 		git add .; \\
 		if [ -n "$$(git status --porcelain)" ]; then \\
-			git commit -m "session end: ${msg}"; \\
+			git commit -m "session end: ${{msg}}"; \\
 		else \\
 			echo "$(GREEN)✨ Workspace clean$(NC)"; \\
 		fi; \\
@@ -427,7 +421,7 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes
 	else \\
 			echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${msg}"
+	@python3 scripts/session.py end -- "${{msg}}"
 	@echo "$(GREEN)✅ All quality checks passed!$(NC)"
 
 # ==============================================================================
@@ -441,12 +435,12 @@ shift-report: ## Generate handoff report
 # PURPOSE: Enterprise "Save Point".
 snapshot: ## Create an immutable local backup of your workspace state
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for snapshot$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py create "${name}"
+	@python3 scripts/snapshot.py create "${{name}}"
 
 # PURPOSE: Revert to "Save Point".
 restore: ## Revert workspace to a previous snapshot (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for restore$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py restore "${name}" $(if $(yes),--yes,)
+	@python3 scripts/snapshot.py restore "${{name}}" $(if $(yes),--yes,)
 
 # PURPOSE: Standard backup.
 backup: snapshot ## Alias for snapshot
@@ -490,7 +484,6 @@ session-force-end-all: ## Emergency: force-close any stale or hung sessions
 # PURPOSE: The "Start My Day" command.
 # WHEN: Run this as your very first action in a new work day.
 init: ## Quickstart: starts a session and exports LLM context manifest
-	@if [ -z "$(msg)" ]; then echo "$(RED)❌ Error: msg=\\"...\\" is required for init$(NC)" && exit 1; fi
 	@python3 scripts/session.py start -- "${{msg}}"
 	@echo "\\n$(BLUE)📋 Exporting Context for LLM...$(NC)"
 	@make context
@@ -558,8 +551,8 @@ help: ## Show categorized help manual
 		printf "  $(GREEN)%-18s$(NC) %s\\n", cmd, msg; \\
 	}' $(MAKEFILE_LIST)
 	@echo "\\n$(BLUE)Usage Examples:$(NC)"
-	@echo "  make session-start msg='Writing research notes'"
-	@echo "  make session-end msg='Completed Phase 1'"
+	@echo "  make session-start [msg='Writing research notes']"
+	@echo "  make session-end [msg='Completed Phase 1']"
 	@echo "  make snapshot name='pre-refactor'"
 
 # PURPOSE: Sync your local environment with remote changes.

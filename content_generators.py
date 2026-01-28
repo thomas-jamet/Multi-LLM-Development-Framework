@@ -129,7 +129,8 @@ make run
 
 def get_archive_workflow() -> str:
     """Generate archive/deprecation workflow."""
-    return """# Workflow: Archive Workspace
+    return (
+        """# Workflow: Archive Workspace
 **Objective:** Safely deprecate and archive a workspace.
 **Trigger:** Project end-of-life or migration complete.
 
@@ -176,11 +177,13 @@ def get_archive_workflow() -> str:
 - Read access only for reference
 - Delete after retention period (if applicable)
 """
+    )
 
 
 def get_lite_test_example() -> str:
     """Generate example test for Lite tier (optional, for learning)."""
-    return """#!/usr/bin/env python3
+    return (
+        """#!/usr/bin/env python3
 \"\"\"Example test for reference - Lite tier doesn't require testing.
 To enable testing, upgrade to Standard tier with: python bootstrap.py --upgrade ./
 \"\"\"
@@ -201,11 +204,13 @@ if __name__ == "__main__":
     test_main_runs()
     print("✅ Basic test passed")
 """
+    )
 
 
 def get_standard_unit_test_example(pkg_name: str) -> str:
     """Generate example unit test for Standard tier."""
-    return f"""\"\"\"Test suite for {pkg_name}.
+    return (
+        f"""\"\"\"Test suite for {pkg_name}.
 
 Run with: pytest tests/unit/
 \"\"\"
@@ -213,7 +218,7 @@ import pytest
 from src.{pkg_name}.main import main
 
 def test_main_function_exists():
-
+    pass
 
 def test_main_runs():
     \"\"\"Verify main function executes without errors.\"\"\"
@@ -228,11 +233,13 @@ def test_main_runs():
 # def test_specific_function():
 #     assert my_function(input) == expected_output
 """
+    )
 
 
 def get_standard_integration_test_example(pkg_name: str) -> str:
     """Generate example integration test for Standard tier."""
-    return f"""\"\"\"Integration tests for {pkg_name}.
+    return (
+        f"""\"\"\"Integration tests for {pkg_name}.
 
 Tests that verify multiple components work together.
 Run with: pytest tests/integration/
@@ -253,13 +260,16 @@ def test_external_api_integration():
     
     Mark as slow to skip in fast test runs: pytest -m "not slow"
     \"\"\"
+    
     pass  # Replace with actual API integration test
 """
+    )
 
 
 def get_enterprise_eval_test_example(pkg_name: str) -> str:
     """Generate example eval test for Enterprise tier."""
-    return f"""\"\"\"Agent capability evaluation tests for {pkg_name}.
+    return (
+        f"""\"\"\"Agent capability evaluation tests for {pkg_name}.
 
 Tests multi-agent coordination and domain isolation.
 Run with: pytest tests/evals/
@@ -291,11 +301,13 @@ def test_agent_handoff():
     # This would test the shift_report.py output
     pass  # Implement based on shift report spec
 """
+    )
 
 
 def get_adr_template() -> str:
     """Generate ADR template for Enterprise tier."""
-    return """# ADR-XXXX: [Title]
+    return (
+        """# ADR-XXXX: [Title]
 
 **Date:** YYYY-MM-DD  
 **Status:** [Proposed | Accepted | Deprecated | Superseded by ADR-YYYY]  
@@ -335,11 +347,13 @@ def get_adr_template() -> str:
 
 [Optional: Additional context, links to discussions, related ADRs, implementation notes]
 """
+    )
 
 
 def get_gitleaks_config() -> str:
     """Generate .gitleaks.toml configuration for secret scanning."""
-    return """# Gitleaks configuration for Gemini Workspace
+    return (
+        """# Gitleaks configuration for Gemini Workspace
 # Scans for hardcoded secrets, API keys, and credentials
 
 title = "Gitleaks Config"
@@ -386,3 +400,4 @@ regexes = [
   "example|fake|mock|dummy|test",
 ]
 """
+    )

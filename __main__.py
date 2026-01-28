@@ -56,7 +56,7 @@ def main():
         sys.exit(EXIT_INTERRUPT)
     except Exception as e:
         import traceback
-
+        traceback.print_exc()
         error(f"Unexpected error: {e}")
         sys.exit(EXIT_UNEXPECTED_ERROR)
 
