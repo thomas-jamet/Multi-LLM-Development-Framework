@@ -70,6 +70,7 @@ This creates `bootstrap.py` in the parent directory with:
 3. **LLM-Agnostic**: Provider abstraction allows multi-LLM support
 4. **Build-Time Compilation**: Users get single file, developers get modules
 5. **Backward Compatible**: Compiled output is a drop-in replacement
+6. **Tier-Aware Architecture**: Script organization scales from flat (Lite) to categorized (Standard) to domain-based (Enterprise)
 
 ## 🔧 Modifying the Build Process
 

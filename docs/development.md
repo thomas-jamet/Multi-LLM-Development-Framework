@@ -375,4 +375,134 @@ def should_strip_import(line: str) -> bool:
 
 ---
 
-**Last Updated:** 2026-01-28
+## Tier-Specific Script Organization
+
+### Overview
+
+The bootstrap generates different script directory structures based on the workspace tier:
+
+**Tier 1 (Lite):** Flat structure
+```
+scripts/
+├── check_status.py
+├── index_docs.py
+├── list_skills.py
+├── manage_session.py
+├── manage_skills.py
+└── run_audit.py
+```
+
+**Tier 2 (Standard):** Categorized structure
+```
+scripts/
+├── workspace/
+│   ├── check_status.py
+│   ├── create_snapshot.py
+│   ├── manage_session.py
+│   └── run_audit.py
+├── skills/
+│   ├── explore_skills.py
+│   ├── list_skills.py
+│   └── manage_skills.py
+└── docs/
+    └── index_docs.py
+```
+
+**Tier 3 (Enterprise):** Domain-based structure
+```
+scripts/
+└── shared/           # Default domain
+    ├── check_status.py
+    ├── create_snapshot.py
+    ├── explore_skills.py
+    ├── index_docs.py
+    ├── list_skills.py
+    ├── manage_session.py
+    ├── manage_skills.py
+    └── run_audit.py
+```
+
+### Implementation
+
+The `_script_path(tier, script_name)` helper function in `core/makefile.py` abstracts tier-specific path resolution:
+
+```python
+def _script_path(tier: str, script_name: str) -> str:
+    """Get tier-specific path for a script."""
+    if tier == "1":
+        return f"scripts/{script_name}.py"
+    elif tier == "2":
+        # Look up category from SCRIPT_CATEGORIES
+        for cat, scripts in SCRIPT_CATEGORIES["2"].items():
+            if script_name in scripts:
+                return f"scripts/{cat}/{script_name}.py"
+        return f"scripts/{script_name}.py"
+    else:  # tier == "3"
+        # Look up domain from SCRIPT_CATEGORIES
+        for cat, scripts in SCRIPT_CATEGORIES["3"].items():
+            if script_name in scripts:
+                return f"scripts/{cat}/{script_name}.py"
+        return f"scripts/shared/{script_name}.py"
+```
+
+### Makefile Generation
+
+Both tier-specific targets and common targets use `_script_path()` to ensure correct paths:
+
+```python
+# Tier-specific targets
+def _get_makefile_tier_targets(tier: str, project_name: str) -> str:
+    # Uses explicit paths with tier-specific logic
+
+# Common targets (shared across all tiers)
+def _get_makefile_common_targets(tier: str = "1") -> str:
+    # Build script path variables
+    sp_audit = _script_path(tier, "run_audit")
+    sp_session = _script_path(tier, "manage_session")
+    
+    # Use string concatenation to avoid f-string backslash issues
+    return """
+audit: ## Validate workspace structure
+\t@python3 """ + sp_audit + """
+"""
+```
+
+### Adding New Scripts
+
+When adding a new script to the bootstrap:
+
+1. **Update `SCRIPT_CATEGORIES` in `config.py`**:
+   ```python
+   SCRIPT_CATEGORIES = {
+       "2": {
+           "workspace": ["run_audit", "manage_session", "new_script"],
+           # ...
+       }
+   }
+   ```
+
+2. **Create the template in `core/templates.py`**:
+   ```python
+   def get_new_script() -> str:
+       return """#!/usr/bin/env python3
+   # Script content
+   """
+   ```
+
+3. **Update script generation in `operations/create.py`**:
+   ```python
+   script_generators = [
+       ("new_script", get_new_script),
+       # ...
+   ]
+   ```
+
+4. **Add Makefile target using `_script_path()`**:
+   ```python
+   sp_new_script = _script_path(tier, "new_script")
+   # Then use: """ + sp_new_script + """
+   ```
+
+---
+
+**Last Updated:** 2026-01-29
