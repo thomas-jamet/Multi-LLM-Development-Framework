@@ -16,6 +16,7 @@ exclude = [
     "^bootstrap\\.py$",
     "^test-workspace/",
     "^tests/",
+    "^core/",  # Excluded to avoid conflict with core.py module
 ]
 
 # Per-module options

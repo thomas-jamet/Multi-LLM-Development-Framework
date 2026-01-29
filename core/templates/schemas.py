@@ -71,6 +71,7 @@ def get_workspace_schema() -> str:
         indent=2,
     )
 
+
 def get_settings_schema() -> str:
     """Generate JSON schema for settings.json validation and IDE autocomplete."""
     return json.dumps(
@@ -120,6 +121,7 @@ def get_settings_schema() -> str:
         },
         indent=2,
     )
+
 
 def get_bootstrap_config_schema() -> str:
     """Generate JSON schema for .gemini-bootstrap.json validation and documentation."""

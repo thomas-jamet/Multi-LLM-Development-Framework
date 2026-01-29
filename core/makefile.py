@@ -6,8 +6,8 @@ Generates tier-specific Makefiles using composition pattern:
 Final Makefile = TIER-SPECIFIC + COMMON
 """
 
-
 from config import SCRIPT_CATEGORIES
+
 
 def _script_path(tier: str, script_name: str) -> str:
     """Get tier-specific path for a script."""
@@ -28,15 +28,17 @@ def _script_path(tier: str, script_name: str) -> str:
 def get_makefile(tier: str, project_name: str) -> str:
     """
     Generate complete Makefile for specified tier.
-    
+
     Args:
         tier: Workspace tier ("1" for Lite, "2" for Standard, "3" for Enterprise)
         project_name: Project name used in tier-specific targets
-        
+
     Returns:
         Complete Makefile content
     """
-    return _get_makefile_tier_targets(tier, project_name) + _get_makefile_common_targets(tier)
+    return _get_makefile_tier_targets(
+        tier, project_name
+    ) + _get_makefile_common_targets(tier)
 
 
 def _get_makefile_tier_targets(tier: str, project_name: str) -> str:
@@ -300,7 +302,7 @@ restore: ## Revert workspace to a previous snapshot (use name="...")
 backup: snapshot ## Alias for snapshot
 """
     else:  # tier == "3"
-        return f"""# Gemini Enterprise Workspace
+        return """# Gemini Enterprise Workspace
 SHELL := /bin/bash
 .PHONY: scan test test-watch coverage typecheck audit eval context context-frontend context-backend install clean session-start session-end init list-skills shift-report snapshot restore doctor status health help lint format update lock docs ci-local deps-check security-scan session-force-end-all onboard backup sync search list-todos index skill-add skill-remove
 
@@ -413,7 +415,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/shared/manage_session.py start -- "${{msg}}"
+	@python3 scripts/shared/manage_session.py start -- "${msg}"
 
 # PURPOSE: finalize your work, runs all quality checks, and sync to GitHub (Enterprise tier).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
@@ -431,7 +433,7 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes (optional
 	@if [ -d .git ]; then \\
 		git add .; \\
 		if [ -n "$$(git status --porcelain)" ]; then \\
-			git commit -m "session end: ${{msg}}"; \\
+			git commit -m "session end: ${msg}"; \\
 		else \\
 			echo "$(GREEN)✨ Workspace clean$(NC)"; \\
 		fi; \\
@@ -439,7 +441,7 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes (optional
 	else \\
 			echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/shared/manage_session.py end -- "${{msg}}"
+	@python3 scripts/shared/manage_session.py end -- "${msg}"
 	@echo "$(GREEN)✅ All quality checks passed!$(NC)"
 
 # ==============================================================================
@@ -453,12 +455,12 @@ shift-report: ## Generate handoff report
 # PURPOSE: Enterprise "Save Point".
 snapshot: ## Create an immutable local backup of your workspace state
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for snapshot$(NC)" && exit 1; fi
-	@python3 scripts/shared/create_snapshot.py create "${{name}}"
+	@python3 scripts/shared/create_snapshot.py create "${name}"
 
 # PURPOSE: Revert to "Save Point".
 restore: ## Revert workspace to a previous snapshot (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for restore$(NC)" && exit 1; fi
-	@python3 scripts/shared/create_snapshot.py restore "${{name}}" $(if $(yes),--yes,)
+	@python3 scripts/shared/create_snapshot.py restore "${name}" $(if $(yes),--yes,)
 
 # PURPOSE: Standard backup.
 backup: snapshot ## Alias for snapshot
@@ -474,9 +476,10 @@ def _get_makefile_common_targets(tier: str = "1") -> str:
     sp_list_skills = _script_path(tier, "list_skills")
     sp_skill_manager = _script_path(tier, "skill_manager")
     sp_skill_explorer = _script_path(tier, "skill_explorer")
-    
+
     # Use string concatenation to avoid f-string backslash issues
-    return """
+    return (
+        """
 # ==============================================================================
 # ⚙️ SYSTEM CONFIGURATION
 # ==============================================================================
@@ -500,7 +503,9 @@ PYTEST := pytest
 # PURPOSE: Emergency stop for stale tasks.
 # WHEN: Use this if you forgot to run 'session-end' and things are hung.
 session-force-end-all: ## Emergency: force-close any stale or hung sessions
-	@python3 """ + sp_session + """ force-end-all
+	@python3 """
+        + sp_session
+        + """ force-end-all
 
 # PURPOSE: The "Start My Day" command.
 # WHEN: Run this as your very first action in a new work day.
@@ -514,7 +519,9 @@ init: ## Quickstart: starts a session and exports LLM context manifest
 onboard: ## First-run experience: runs status, audit, and diagnostic check
 	@echo "\\n🚀 Welcome to your Gemini Workspace!"
 	@echo "─────────────────────────────────────"
-	@python3 """ + sp_status + """
+	@python3 """
+        + sp_status
+        + """
 	@echo "📋 Running health check..."
 	@make doctor
 	@echo "\\n📚 Quick Start:"
@@ -527,29 +534,39 @@ onboard: ## First-run experience: runs status, audit, and diagnostic check
 # PURPOSE: Checks that your folders follow the required AI standard.
 # WHEN: I run this automatically for you, but you can run it to check health.
 audit: ## Validate that workspace structure complies with the standard
-	@python3 """ + sp_audit + """
+	@python3 """
+        + sp_audit
+        + """
 
 # PURPOSE: See what special "AI Capabilities" I have in this folder.
 # WHEN: Use this to discover new workflows or skills I can perform.
 list-skills: ## List the cognitive 'Skills' and 'Workflows' available to agents
 	@echo "$(BLUE)🧠 Querying AI capabilities...$(NC)"
-	@python3 """ + sp_list_skills + """
+	@python3 """
+        + sp_list_skills
+        + """
 
 # PURPOSE: Install a new AI capability from a trusted source.
 # WHEN: Use this when you need a specialized skill for a specific task.
 skill-add: ## Fetch and install a skill (use source="owner/repo/path")
 	@if [ -z "$(source)" ]; then echo "$(RED)❌ Error: source=\\"...\\" is required$(NC)" && exit 1; fi
-	@$(PYTHON) """ + sp_skill_manager + """ fetch "$(source)"
+	@$(PYTHON) """
+        + sp_skill_manager
+        + """ fetch "$(source)"
 
 # PURPOSE: Remove an AI capability you no longer need.
 skill-remove: ## Uninstall a local skill (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required$(NC)" && exit 1; fi
-	@$(PYTHON) """ + sp_skill_manager + """ remove "$(name)"
+	@$(PYTHON) """
+        + sp_skill_manager
+        + """ remove "$(name)"
 
 # PURPOSE: View your current "Health Score" and workspace status.
 # WHEN: Use this to see how much progress you've made today.
 status: ## Show a high-level health dashboard and git/session status
-	@python3 """ + sp_status + """
+	@python3 """
+        + sp_status
+        + """
 
 # PURPOSE: Standard health check (alias for doctor).
 health: doctor ## Alias for doctor
@@ -590,7 +607,9 @@ search: ## Search codebase for q="term"
 
 # PURPOSE: Discover new skills from external repositories.
 discover: ## Discover external skills (q="topic")
-	@python3 """ + sp_skill_explorer + """ search "$(q)"
+	@python3 """
+        + sp_skill_explorer
+        + """ search "$(q)"
 
 # PURPOSE: List all TODOs and FIXMEs in the codebase.
 list-todos: ## List all 'TODO' and 'FIXME' tags in the code
@@ -612,7 +631,9 @@ clean: ## Clear out temporary files, caches, and scratchpad drafts
 ci-local: ## Run CI tests locally (mirrors GitHub Actions)
 	@echo "$(BLUE)🔄 Running local CI checks...$(NC)"
 	@echo "📋 Step 1: Audit"
-	@python3 """ + sp_audit + """
+	@python3 """
+        + sp_audit
+        + """
 	@echo "📋 Step 2: Lint"
 	@ruff check . || true
 	@echo "📋 Step 3: Test"
@@ -642,3 +663,4 @@ security-scan: ## Scan for secrets and vulnerabilities
 # PURPOSE: Create a local "Save Point" of the entire workspace.
 backup: snapshot ## Alias for snapshot
 """
+    )

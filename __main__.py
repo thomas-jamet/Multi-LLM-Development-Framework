@@ -16,7 +16,7 @@ import argparse
 import json
 from pathlib import Path
 
-# Version constant (imported from config in final build)  
+# Version constant (imported from config in final build)
 VERSION = "2026.26"
 DEFAULT_PYTHON_VERSION = "3.11"
 
@@ -38,15 +38,15 @@ USE_COLOR = True
 
 def run_self_tests():
     """Run internal self-tests for the bootstrap script.
-    
+
     Tests core functionality without external dependencies.
     Returns exit code 0 on success, 1 on failure.
     """
     print("🧪 Running Bootstrap Self-Tests...\n")
-    
+
     passed = 0
     failed = 0
-    
+
     def test(name, condition):
         nonlocal passed, failed
         if condition:
@@ -55,23 +55,27 @@ def run_self_tests():
         else:
             print(f"  ❌ {name}")
             failed += 1
-    
+
     # Test 1: Version format
-    test("VERSION format (YYYY.NN)", 
-         len(VERSION.split(".")) == 2 and VERSION.split(".")[0].isdigit())
-    
+    test(
+        "VERSION format (YYYY.NN)",
+        len(VERSION.split(".")) == 2 and VERSION.split(".")[0].isdigit(),
+    )
+
     # Test 2: Tier definitions exist
-    test("TIERS defined with 3 tiers", 
-         len(TIERS) == 3 and all(k in TIERS for k in ["1", "2", "3"]))  # noqa: F821 - TIERS imported from config in build
-    
+    test(
+        "TIERS defined with 3 tiers",
+        len(TIERS) == 3 and all(k in TIERS for k in ["1", "2", "3"]),
+    )  # noqa: F821 - TIERS imported from config in build
+
     # Test 3: Each tier has required keys
     for tier_id, tier_data in TIERS.items():  # noqa: F821
         test(f"Tier {tier_id} has 'name' key", "name" in tier_data)
-    
+
     # Test 4: Exit codes defined
     test("EXIT_SUCCESS is 0", EXIT_SUCCESS == 0)
     test("EXIT_VALIDATION_ERROR is non-zero", EXIT_VALIDATION_ERROR != 0)
-    
+
     # Test 5: Project name validation (if available)
     try:
         # Valid names should pass
@@ -81,7 +85,7 @@ def run_self_tests():
         test("validate_project_name available", False)
     except ValidationError:  # noqa: F821 - ValidationError imported from core in build
         test("validate_project_name accepts valid name", False)
-    
+
     try:
         # Invalid names should fail
         validate_project_name("123-invalid")
@@ -90,15 +94,15 @@ def run_self_tests():
         pass  # Already reported above
     except ValidationError:  # noqa: F821
         test("validate_project_name rejects invalid name", True)
-    
+
     # Test 6: Template consistency
     for tmpl_name, tmpl_config in TEMPLATES.items():  # noqa: F821 - TEMPLATES imported from config in build
         test(f"Template '{tmpl_name}' has tier", "tier" in tmpl_config)
-    
+
     # Summary
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Results: {passed} passed, {failed} failed")
-    
+
     if failed > 0:
         print("\n❌ Self-tests FAILED")
         sys.exit(1)
@@ -133,6 +137,7 @@ def main():
         sys.exit(EXIT_INTERRUPT)
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         error(f"Unexpected error: {e}")
         sys.exit(EXIT_UNEXPECTED_ERROR)
@@ -367,9 +372,7 @@ After creation:
         while True:
             default_tier = config.get("default_tier", "")
             prompt = (
-                f"\nChoice (1-3)"
-                + (f" [{default_tier}]" if default_tier else "")
-                + ": "
+                "\nChoice (1-3)" + (f" [{default_tier}]" if default_tier else "") + ": "
             )
             choice = input(prompt).strip() or default_tier
             if choice in TIERS:

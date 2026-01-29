@@ -66,7 +66,10 @@ class TestCore:
     def _import_core_module(self):
         """Import core.py avoiding the core/ directory shadow."""
         import importlib.util
-        spec = importlib.util.spec_from_file_location("core_module", SOURCE_ROOT / "core.py")
+
+        spec = importlib.util.spec_from_file_location(
+            "core_module", SOURCE_ROOT / "core.py"
+        )
         core_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(core_module)
         return core_module

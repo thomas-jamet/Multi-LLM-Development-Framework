@@ -11,7 +11,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # We need to be careful here - "core" is a package, but core.py is a module
 # Python will import the package by default, so we use importlib
 import importlib.util
-spec = importlib.util.spec_from_file_location("core_module", Path(__file__).parent.parent / "core.py")
+
+spec = importlib.util.spec_from_file_location(
+    "core_module", Path(__file__).parent.parent / "core.py"
+)
 core_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core_module)
 
@@ -34,20 +37,20 @@ VERSION = core_module.VERSION
 DEFAULT_PYTHON_VERSION = core_module.DEFAULT_PYTHON_VERSION
 
 __all__ = [
-    'validate_project_name',
-    'success',
-    'error',
-    'warning',
-    'info',
-    'header',
-    'dim',
-    '_c',
-    'Colors',
-    'CreationError',
-    'ValidationError',
-    'ConfigurationError',
-    'UpgradeError',
-    'RollbackError',
-    'VERSION',
-    'DEFAULT_PYTHON_VERSION',
+    "validate_project_name",
+    "success",
+    "error",
+    "warning",
+    "info",
+    "header",
+    "dim",
+    "_c",
+    "Colors",
+    "CreationError",
+    "ValidationError",
+    "ConfigurationError",
+    "UpgradeError",
+    "RollbackError",
+    "VERSION",
+    "DEFAULT_PYTHON_VERSION",
 ]

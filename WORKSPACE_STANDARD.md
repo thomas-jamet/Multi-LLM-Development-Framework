@@ -47,11 +47,11 @@ flowchart TD
     Q1 -->|Yes| Q2{Need domain<br/>isolation?}
     Q2 -->|No - Single app| T2[🟩 Standard Tier]
     Q2 -->|Yes - Platform/SaaS| T3[🟪 Enterprise Tier]
-    
+
     T1 --> D1[Flat src/main.py<br/>No tests<br/>Cron jobs, scrapers]
     T2 --> D2[Modular src/pkg/<br/>Full test suite<br/>Web apps, CLIs]
     T3 --> D3[Isolated domains<br/>Multi-agent contracts<br/>SaaS platforms]
-    
+
     style T1 fill:#e3f2fd
     style T2 fill:#e8f5e9
     style T3 fill:#f3e5f5
@@ -1225,7 +1225,7 @@ def main():
     url = "https://news.ycombinator.com"
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    
+
     headlines = []
     for item in soup.select('.titleline > a'):
         headlines.append({
@@ -1233,14 +1233,14 @@ def main():
             'url': item['href'],
             'scraped_at': datetime.now().isoformat()
         })
-    
+
     # Write to outputs
     Path('data/outputs').mkdir(parents=True, exist_ok=True)
     with open(f'data/outputs/headlines_{datetime.now():%Y%m%d}.csv', 'w') as f:
         writer = csv.DictWriter(f, fieldnames=['title', 'url', 'scraped_at'])
         writer.writeheader()
         writer.writerows(headlines)
-    
+
     print(f"✅ Scraped {len(headlines)} headlines")
 
 if __name__ == '__main__':
@@ -1335,7 +1335,7 @@ def test_create_task():
     })
     assert response.status_code == 200
     assert response.json()["title"] == "Test task"
-    
+
 def test_get_task():
     # Create task first
     create_resp = client.post("/tasks", json={
@@ -1343,7 +1343,7 @@ def test_get_task():
         "description": "Test"
     })
     task_id = create_resp.json()["id"]
-    
+
     # Retrieve it
     response = client.get(f"/tasks/{task_id}")
     assert response.status_code == 200
@@ -1442,10 +1442,10 @@ def display_user(user_id: str):
     # Call backend via contract
     response = requests.get(f"http://localhost:8000/users/{user_id}")
     user = response.json()
-    
+
     # Validate against contract
     assert set(user.keys()) == set(user_schema['required'])
-    
+
     print(f"User: {user['name']} ({user['email']})")
 PYTHON
 
@@ -1493,18 +1493,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: pip install -e .
-      
+
       - name: Run tests
         run: pytest tests/
-      
+
       - name: Deploy to staging
         env:
           DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
@@ -1533,19 +1533,19 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Validate tag
         run: |
           if [[ ! "$GITHUB_REF" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Invalid tag format. Use vX.Y.Z"
             exit 1
           fi
-      
+
       - name: Run full test suite
         run: |
           pip install -e '.[dev]'
           pytest tests/ --cov
-      
+
       - name: Deploy to production
         env:
           PROD_DEPLOY_KEY: ${{ secrets.PROD_DEPLOY_KEY }}
@@ -1575,11 +1575,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.version }}
-      
+
       - name: Confirm rollback
         run: |
           echo "Rolling back to ${{ github.event.inputs.version }}"
-          
+
       - name: Deploy previous version
         run: |
           # Deploy the checked-out version

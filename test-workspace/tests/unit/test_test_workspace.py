@@ -2,11 +2,14 @@
 
 Run with: pytest tests/unit/
 """
+
 import pytest
 from src.test_workspace.main import main
 
+
 def test_main_function_exists():
     pass
+
 
 def test_main_runs():
     """Verify main function executes without errors."""
@@ -15,6 +18,7 @@ def test_main_runs():
         assert result is not None or result is None  # Just verify it runs
     except Exception as e:
         pytest.fail(f"main() raised {e}")
+
 
 # Add more tests as your code grows
 # Example:

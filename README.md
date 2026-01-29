@@ -19,7 +19,7 @@ bootstrap_src/
 └── providers/                  # LLM provider abstraction
     └── base.py                # Provider interface
 
-8 modules • 3,478 lines → compiles to 3,515-line bootstrap.py
+8 modules • 3,683 lines → compiles to 4,187-line bootstrap.py
 ```
 
 ## 🔨 Building
@@ -94,6 +94,6 @@ To add a new module:
 
 ---
 
-**Built with**: Automated extraction + manual refinement  
-**Maintainability**: 36% reduction in source lines vs original monolith  
+**Built with**: Automated extraction + manual refinement
+**Maintainability**: 36% reduction in source lines vs original monolith
 **Architecture**: Modular source → Single-file distribution

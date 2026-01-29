@@ -7,7 +7,6 @@ Generates workspace.json, README, getting started guides, etc.
 
 import json
 from datetime import datetime, timezone
-from typing import Dict
 
 
 # Version constant (imported from config in final build)
@@ -26,6 +25,7 @@ def get_workspace_json(tier: str, name: str, parent: str | None = None) -> str:
     if parent:
         data["parent_workspace"] = parent
     return json.dumps(data, indent=2)
+
 
 def get_getting_started(tier: str, pkg_name: str) -> str:
     """Generate tier-specific getting started guide for onboarding."""
@@ -129,8 +129,7 @@ make run
 
 def get_archive_workflow() -> str:
     """Generate archive/deprecation workflow."""
-    return (
-        """# Workflow: Archive Workspace
+    return """# Workflow: Archive Workspace
 **Objective:** Safely deprecate and archive a workspace.
 **Trigger:** Project end-of-life or migration complete.
 
@@ -177,13 +176,11 @@ def get_archive_workflow() -> str:
 - Read access only for reference
 - Delete after retention period (if applicable)
 """
-    )
 
 
 def get_lite_test_example() -> str:
     """Generate example test for Lite tier (optional, for learning)."""
-    return (
-        """#!/usr/bin/env python3
+    return """#!/usr/bin/env python3
 \"\"\"Example test for reference - Lite tier doesn't require testing.
 To enable testing, upgrade to Standard tier with: python bootstrap.py --upgrade ./
 \"\"\"
@@ -204,13 +201,11 @@ if __name__ == "__main__":
     test_main_runs()
     print("✅ Basic test passed")
 """
-    )
 
 
 def get_standard_unit_test_example(pkg_name: str) -> str:
     """Generate example unit test for Standard tier."""
-    return (
-        f"""\"\"\"Test suite for {pkg_name}.
+    return f"""\"\"\"Test suite for {pkg_name}.
 
 Run with: pytest tests/unit/
 \"\"\"
@@ -233,13 +228,11 @@ def test_main_runs():
 # def test_specific_function():
 #     assert my_function(input) == expected_output
 """
-    )
 
 
 def get_standard_integration_test_example(pkg_name: str) -> str:
     """Generate example integration test for Standard tier."""
-    return (
-        f"""\"\"\"Integration tests for {pkg_name}.
+    return f"""\"\"\"Integration tests for {pkg_name}.
 
 Tests that verify multiple components work together.
 Run with: pytest tests/integration/
@@ -257,19 +250,17 @@ def test_end_to_end_flow():
 @pytest.mark.slow
 def test_external_api_integration():
     \"\"\"Test integration with external services.
-    
+
     Mark as slow to skip in fast test runs: pytest -m "not slow"
     \"\"\"
-    
+
     pass  # Replace with actual API integration test
 """
-    )
 
 
 def get_enterprise_eval_test_example(pkg_name: str) -> str:
     """Generate example eval test for Enterprise tier."""
-    return (
-        f"""\"\"\"Agent capability evaluation tests for {pkg_name}.
+    return f"""\"\"\"Agent capability evaluation tests for {pkg_name}.
 
 Tests multi-agent coordination and domain isolation.
 Run with: pytest tests/evals/
@@ -301,16 +292,14 @@ def test_agent_handoff():
     # This would test the shift_report.py output
     pass  # Implement based on shift report spec
 """
-    )
 
 
 def get_adr_template() -> str:
     """Generate ADR template for Enterprise tier."""
-    return (
-        """# ADR-XXXX: [Title]
+    return """# ADR-XXXX: [Title]
 
-**Date:** YYYY-MM-DD  
-**Status:** [Proposed | Accepted | Deprecated | Superseded by ADR-YYYY]  
+**Date:** YYYY-MM-DD
+**Status:** [Proposed | Accepted | Deprecated | Superseded by ADR-YYYY]
 **Deciders:** [List decision makers]
 
 ## Context
@@ -322,7 +311,7 @@ def get_adr_template() -> str:
 
 ## Decision
 
-[Clearly state the decision that was made.  
+[Clearly state the decision that was made.
 "We will..." format works well.]
 
 ## Consequences
@@ -347,13 +336,11 @@ def get_adr_template() -> str:
 
 [Optional: Additional context, links to discussions, related ADRs, implementation notes]
 """
-    )
 
 
 def get_gitleaks_config() -> str:
     """Generate .gitleaks.toml configuration for secret scanning."""
-    return (
-        """# Gitleaks configuration for Gemini Workspace
+    return """# Gitleaks configuration for Gemini Workspace
 # Scans for hardcoded secrets, API keys, and credentials
 
 title = "Gitleaks Config"
@@ -377,7 +364,7 @@ regex = 'ghp_[0-9a-zA-Z]{36}'
 tags = ["github", "token"]
 
 [[rules]]
-id = "generic-secret"  
+id = "generic-secret"
 description = "Generic Secret"
 regex = '(?i)(secret|password|passwd|pwd)[\\s]*[=:][\\s]*['"\\"`][^'"\\"`]{8,}['"\\"`]'
 tags = ["secret", "password"]
@@ -400,4 +387,3 @@ regexes = [
   "example|fake|mock|dummy|test",
 ]
 """
-    )

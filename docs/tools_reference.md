@@ -6,7 +6,7 @@ Quick reference for all modules in the bootstrap source.
 
 ## config.py (251 lines)
 
-**Purpose:** Central configuration and constants  
+**Purpose:** Central configuration and constants
 **Dependencies:** None
 
 ### Key Exports
@@ -36,7 +36,7 @@ print(f"Tier 2: {TIERS['2']['name']}")  # "Standard"
 
 ## core.py (411 lines)
 
-**Purpose:** Base exceptions, utilities, and validators  
+**Purpose:** Base exceptions, utilities, and validators
 **Dependencies:** `config.py`
 
 ### Exception Hierarchy
@@ -71,7 +71,7 @@ WorkspaceError (base)
 
 ## providers/base.py (108 lines)
 
-**Purpose:** LLM provider abstraction  
+**Purpose:** LLM provider abstraction
 **Dependencies:** `config.py`, `core.py`
 
 ### Interface
@@ -79,7 +79,7 @@ WorkspaceError (base)
 ```python
 class LLMProvider:
     """Base interface for LLM providers."""
-    
+
     def generate(self, prompt: str) -> str:
         """Generate content from prompt."""
         raise NotImplementedError
@@ -95,7 +95,7 @@ class LLMProvider:
 
 ## core/makefile.py (638 lines)
 
-**Purpose:** Generate Makefiles for all tiers  
+**Purpose:** Generate Makefiles for all tiers
 **Dependencies:** `config.py`
 
 ### Main Function
@@ -118,7 +118,7 @@ def generate_makefile(tier: str, pkg_name: str) -> str:
 
 ## core/templates.py (637 lines)
 
-**Purpose:** Generate file templates  
+**Purpose:** Generate file templates
 **Dependencies:** `config.py`
 
 ### Template Functions
@@ -139,7 +139,7 @@ def generate_makefile(tier: str, pkg_name: str) -> str:
 
 ## content_generators.py (387 lines)
 
-**Purpose:** Generate dynamic content  
+**Purpose:** Generate dynamic content
 **Dependencies:** `config.py`, `core.py`
 
 ### Key Functions
@@ -156,7 +156,7 @@ def generate_makefile(tier: str, pkg_name: str) -> str:
 
 ## operations/create.py (705 lines)
 
-**Purpose:** Workspace CRUD operations  
+**Purpose:** Workspace CRUD operations
 **Dependencies:** All above modules
 
 ### Main Functions
@@ -228,7 +228,7 @@ def rollback_workspace(
 
 ## __main__.py (339 lines)
 
-**Purpose:** CLI entry point  
+**Purpose:** CLI entry point
 **Dependencies:** All modules
 
 ### Entry Point
@@ -271,7 +271,7 @@ python bootstrap.py --run-self-tests
 
 ## build.py (209 lines)
 
-**Purpose:** Build modular source → single file  
+**Purpose:** Build modular source → single file
 **Dependencies:** None (standalone build script)
 
 ### Algorithm

@@ -7,14 +7,20 @@ Defines exceptions, utilities, validators, and helper functions.
 
 import os
 import re
-import sys
 import json
 import hashlib
 import logging
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Any, Dict
-from functools import lru_cache
+
+# Import constants from config
+try:
+    from config import TIERS, TEMPLATES, SNAPSHOTS_DIR
+except ImportError:
+    # Fallback for when core.py is used standalone
+    TIERS = {}
+    TEMPLATES = {}
+    SNAPSHOTS_DIR = ".snapshots"
 
 
 # Version constant
@@ -88,7 +94,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
 
 
 def validate_project_name(name: str) -> None:
@@ -256,6 +261,7 @@ def validate_rollback_backup(backup_name: str, workspace_path: Path) -> None:
             f"Backup path exists but is not a directory: {backup_dir}"
         )
 
+
 def load_config(config_path: Path | None = None) -> dict:
     """Load config from .gemini-bootstrap.json if it exists.
 
@@ -293,6 +299,7 @@ def load_config(config_path: Path | None = None) -> dict:
         except Exception as e:
             warning(f"Unexpected error reading .gemini-bootstrap.json: {e}")
     return {}
+
 
 def _get_file_cache_key(path: Path) -> str:
     """Generate cache key based on file modification time for cache invalidation.
@@ -335,7 +342,6 @@ def _get_file_cache_key(path: Path) -> str:
     except (OSError, PermissionError):
         # If we can't access the file, use a timestamp-based key
         return f"{path}:error:{datetime.now(timezone.utc).timestamp()}"
-
 
 
 # --- CUSTOM EXCEPTION HIERARCHY ---

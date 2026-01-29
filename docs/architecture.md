@@ -1,6 +1,6 @@
 # Bootstrap Source Architecture
 
-**Last Updated:** 2026-01-28  
+**Last Updated:** 2026-01-28
 **Version:** 2026.26
 
 ---
@@ -32,26 +32,26 @@ graph TB
         operations[operations/create.py<br/>705 lines]
         main[__main__.py<br/>339 lines]
     end
-    
+
     subgraph "Build Process"
         builder[build.py]
     end
-    
+
     subgraph "Distribution (Single File)"
         bootstrap[bootstrap.py<br/>~3,500 lines]
     end
-    
+
     config --> builder
     core --> builder
-    providers --> builder  
+    providers --> builder
     makefile --> builder
     templates --> builder
     content --> builder
     operations --> builder
     main --> builder
-    
+
     builder --> bootstrap
-    
+
     style config fill:#e1f5fe
     style core fill:#e1f5fe
     style providers fill:#e1f5fe
@@ -86,26 +86,26 @@ graph TD
     content[content_generators.py<br/>Content Generation]
     operations[operations/create.py<br/>Workspace CRUD]
     main[__main__.py<br/>CLI argparse]
-    
+
     config --> core
     config --> content
     config --> operations
     config --> makefile
     config --> templates
     config --> main
-    
+
     core --> operations
     core --> content
     core --> main
-    
+
     provider_base --> operations
-    
+
     makefile --> operations
     templates --> operations
     content --> operations
-    
+
     operations --> main
-    
+
     style config fill:#4fc3f7,color:#000
     style core fill:#81c784,color:#000
     style provider_base fill:#ffb74d,color:#000
@@ -136,13 +136,13 @@ sequenceDiagram
     participant Build as build.py
     participant Modules as Source Modules
     participant Output as bootstrap.py
-    
+
     Dev->>Build: make build
     activate Build
-    
+
     Build->>Build: Initialize header
     Build->>Build: Read module_order
-    
+
     loop For each module
         Build->>Modules: Read module source
         Modules-->>Build: Return code
@@ -150,12 +150,12 @@ sequenceDiagram
         Build->>Build: Preserve external imports
         Build->>Build: Append to output
     end
-    
+
     Build->>Output: Write compiled file
     Build->>Output: Add metadata header
     Build-->>Dev: ✅ Build complete
     deactivate Build
-    
+
     Dev->>Output: python ../bootstrap.py --version
     Output-->>Dev: 2026.26
 ```
@@ -238,7 +238,7 @@ The build script (`build.py`) transforms imports:
 
 **Complexity:** Each tier has different targets:
 - Lite: `run`, `install`, `audit`, `clean`
-- Standard: + `test`, `coverage`, `snapshot`  
+- Standard: + `test`, `coverage`, `snapshot`
 - Enterprise: + `eval`, `shift-report`, `lock`, `scan`
 
 **Dependencies:** `config.py`
@@ -312,8 +312,8 @@ The build script (`build.py`) transforms imports:
  600-800 lines: ███░░░░░░░ 3 modules (makefile, templates, operations)
 ```
 
-**Compliance:** 5/8 modules under 500 lines (62.5%)  
-**Acceptable:** 3/8 modules 600-705 lines (complex generators)  
+**Compliance:** 5/8 modules under 500 lines (62.5%)
+**Acceptable:** 3/8 modules 600-705 lines (complex generators)
 **Status:** ✅ Within <500 line guideline (flexible)
 
 ### Total Line Count
@@ -381,7 +381,7 @@ def generate_X(tier: str, name: str) -> str:
 # core.py - validate_manifest_path()
 if ".." in path.split("/"):
     raise ValidationError("Path traversal detected")
-    
+
 if path.startswith("/") or path[1] == ":":
     raise ValidationError("Absolute paths not allowed")
 ```
@@ -392,7 +392,7 @@ if path.startswith("/") or path[1] == ":":
 # core.py - validate_project_name()
 if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", name):
     raise ValidationError("Invalid project name")
-    
+
 if ".." in name or "/" in name:
     raise ValidationError("Path separators not allowed")
 ```
@@ -433,11 +433,11 @@ def should_strip_import(line: str) -> bool:
     # Strip internal package imports
     if "from bootstrap_src." in line:
         return True
-    
+
     # Strip relative imports
     if line.startswith("from ."):
         return True
-    
+
     # Preserve everything else
     return False
 ```

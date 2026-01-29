@@ -124,7 +124,7 @@ python3 ../bootstrap.py --version
 # Expected: Gemini Bootstrap v2026.XX
 
 # Self-tests
-python3 ../bootstrap.py --run-self-tests  
+python3 ../bootstrap.py --run-self-tests
 # Expected: ✅ All tests pass
 
 # Help display
@@ -338,11 +338,11 @@ def should_strip_import(line: str) -> bool:
     # Strip internal package imports
     if "from bootstrap_src." in line:
         return True
-    
+
     # Strip relative imports
     if line.startswith("from ."):
         return True
-    
+
     # Preserve everything else
     return False
 ```
@@ -459,7 +459,7 @@ def _get_makefile_common_targets(tier: str = "1") -> str:
     # Build script path variables
     sp_audit = _script_path(tier, "run_audit")
     sp_session = _script_path(tier, "manage_session")
-    
+
     # Use string concatenation to avoid f-string backslash issues
     return """
 audit: ## Validate workspace structure

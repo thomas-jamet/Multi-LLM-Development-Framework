@@ -119,6 +119,16 @@ python3 ../bootstrap.py --version
 
 ## Testing
 
+### Automated Testing
+
+Run the integration test suite:
+
+```bash
+pytest tests/integration/test_workspace_creation.py -v
+```
+
+This tests workspace creation for all three tiers (Lite, Standard, Enterprise).
+
 ### Manual Testing
 
 Create test workspaces to verify functionality:
@@ -142,10 +152,16 @@ cd test-enterprise && make audit && cd ..
 rm -rf test-enterprise
 ```
 
-### Automated Testing (Planned)
+### Pre-commit  Hooks
+
+Pre-commit hooks are installed to automatically check code quality:
 
 ```bash
-make test  # When pytest suite is implemented
+# Manually run checks on all files
+pre-commit run --all-files
+
+# Checks run automatically on git commit
+git commit -m "Your message"
 ```
 
 See **docs/development.md** for comprehensive testing procedures.
@@ -350,4 +366,4 @@ After reading this guide:
 
 **Questions?** Check the `docs/` directory or open an issue.
 
-*Last updated: 2026-01-28*
+*Last updated: 2026-01-29*

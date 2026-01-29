@@ -3,10 +3,11 @@
 
 Generates workspace audit, session management, document indexing, and status scripts.
 """
+
+
 def get_run_audit_script() -> str:
     """Generate workspace audit script (run_audit.py)."""
-    return (
-        '''#!/usr/bin/env python3
+    return '''#!/usr/bin/env python3
 """Workspace structure auditor - validates against Gemini Standard."""
 import os
 import sys
@@ -15,21 +16,21 @@ from pathlib import Path
 def main():
     print("🔍 Auditing workspace structure...")
     errors = 0
-    
+
     # Check core files
     required = ["GEMINI.md", "Makefile", ".gemini/workspace.json"]
     for f in required:
         if not Path(f).exists():
             print(f"❌ Missing core file: {f}")
             errors += 1
-            
+
     # Check directories
     required_dirs = ["logs", "docs"]
     for d in required_dirs:
         if not Path(d).exists():
             print(f"❌ Missing directory: {d}/")
             errors += 1
-            
+
     if errors == 0:
         print("✅ Audit passed.")
         sys.exit(0)
@@ -40,12 +41,11 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-    )
+
 
 def get_manage_session_script() -> str:
     """Generate session management script (manage_session.py)."""
-    return (
-        '''#!/usr/bin/env python3
+    return '''#!/usr/bin/env python3
 """Session management for Gemini workspaces."""
 import argparse
 import json
@@ -68,13 +68,13 @@ def load_sessions():
 def save_session(entry):
     log_dir = Path("logs/sessions")
     log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     history = load_sessions()
     history.append(entry)
-    
+
     with open(log_dir / "history.json", "w") as f:
         json.dump(history, f, indent=2)
-        
+
     # Also append to human readable log
     with open(log_dir / "session.log", "a") as f:
         f.write(f"[{entry['timestamp']}] {entry['action'].upper()}: {entry['message']}\\n")
@@ -83,12 +83,12 @@ def get_git_status():
     try:
         # Get brief stats
         res = subprocess.run(
-            ["git", "diff", "--shortstat"], 
+            ["git", "diff", "--shortstat"],
             capture_output=True, text=True
         )
         if res.stdout.strip():
             return f"Auto-generated: {res.stdout.strip()}"
-            
+
         # If no diff, maybe staged changes?
         res = subprocess.run(
             ["git", "diff", "--cached", "--shortstat"],
@@ -96,7 +96,7 @@ def get_git_status():
         )
         if res.stdout.strip():
             return f"Auto-generated (staged): {res.stdout.strip()}"
-            
+
         return "Session ended (no changes detected)"
     except FileNotFoundError:
         return "Session ended (git not available)"
@@ -125,9 +125,9 @@ def main():
     parser = argparse.ArgumentParser(description="Session Manager")
     parser.add_argument("command", choices=["start", "end", "force-end-all"])
     parser.add_argument("msg", nargs="?", default="", help="Session message")
-    
+
     args = parser.parse_args()
-    
+
     if args.command == "start":
         start_session(args.msg)
     elif args.command == "end":
@@ -138,13 +138,11 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-    )
 
 
 def get_index_docs_script() -> str:
     """Generate document indexer script (index_docs.py)."""
-    return (
-        r"""#!/usr/bin/env python3
+    return r"""#!/usr/bin/env python3
 import os
 from pathlib import Path
 
@@ -161,7 +159,7 @@ def generate_index():
         "## 📁 Directories",
         ""
     ]
-    
+
     # Define directory descriptions
     descriptions = {
         "standards": "Workspace rules and bootstrap protocols.",
@@ -173,14 +171,14 @@ def generate_index():
     }
 
     folders = sorted([d for d in docs_path.iterdir() if d.is_dir()])
-    
+
     for folder in folders:
         desc = descriptions.get(folder.name, "")
         header = f"### [{folder.name}](docs/{folder.name}/)"
         if desc:
             header += f" - {desc}"
         readme_content.append(header)
-        
+
         # List files in folder (top level only)
         files = sorted([f for f in folder.iterdir() if f.is_file() and not f.name.startswith(".")])
         if files:
@@ -195,18 +193,17 @@ def generate_index():
 
     with open("README.md", "w") as f:
         f.write("\n".join(readme_content))
-    
+
     print("✅ README.md updated with latest index.")
 
 if __name__ == "__main__":
     generate_index()
 """
-    )
+
 
 def get_check_status_script() -> str:
     """Generate workspace status script with health dashboard (check_status.py)."""
-    return (
-        '''#!/usr/bin/env python3
+    return '''#!/usr/bin/env python3
 """Show workspace status with health dashboard."""
 import json
 import os
@@ -235,13 +232,13 @@ def get_git_info():
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             capture_output=True, text=True, check=True
         ).stdout.strip()
-        
+
         # Check for uncommitted changes
         status = subprocess.run(
             ["git", "status", "--porcelain"],
             capture_output=True, text=True, check=True
         ).stdout.strip()
-        
+
         has_changes = len(status.split("\\n")) if status else 0
         return branch, has_changes
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -261,20 +258,20 @@ def get_dependency_age():
 
 def calculate_health_score():
     """Calculate workspace health score (0-100).
-    
+
     Returns:
         Tuple of (score, issues_list)
     """
     score = 100
     issues = []
-    
+
     # Check required files (25 points)
     required_files = ["GEMINI.md", "Makefile", ".gemini/workspace.json", "docs/roadmap.md"]
     for f in required_files:
         if not Path(f).exists():
             score -= 6
             issues.append(f"Missing {f}")
-    
+
     # Check git status (20 points)
     branch, changes = get_git_info()
     if branch is None:
@@ -285,13 +282,13 @@ def calculate_health_score():
         issues.append(f"{changes} uncommitted changes")
     elif changes and changes > 0:
         score -= 5
-    
+
     # Check session tracking (15 points)
     sessions_dir = Path("logs/sessions")
     if not sessions_dir.exists():
         score -= 15
         issues.append("No sessions directory")
-    
+
     # Check documentation freshness (20 points)
     roadmap = Path("docs/roadmap.md")
     if roadmap.exists():
@@ -303,7 +300,7 @@ def calculate_health_score():
         elif days_ago > 30:
             score -= 10
             issues.append(f"Roadmap aging ({days_ago} days)")
-    
+
     # Check dependency freshness (20 points)
     dep_file, dep_age = get_dependency_age()
     if dep_file and dep_age:
@@ -313,13 +310,13 @@ def calculate_health_score():
         elif dep_age > 90:
             score -= 10
             issues.append(f"{dep_file} aging ({dep_age} days)")
-    
+
     return max(0, score), issues
 
 
 if __name__ == "__main__":
     print(f"{CYAN}📊 Workspace Status{RESET}\\n")
-    
+
     # Workspace metadata
     workspace_file = Path(".gemini/workspace.json")
     if workspace_file.exists():
@@ -330,7 +327,7 @@ if __name__ == "__main__":
         print(f"Created: {workspace.get('created', 'Unknown')}")
     else:
         print("⚠️  No workspace.json found")
-    
+
     # Git info
     print()
     branch, changes = get_git_info()
@@ -340,7 +337,7 @@ if __name__ == "__main__":
             print(f"Uncommitted changes: {changes}")
         else:
             print("Working tree clean ✓")
-    
+
     # Health score
     print()
     score, issues = calculate_health_score()
@@ -356,12 +353,11 @@ if __name__ == "__main__":
     else:
         indicator = f"{RED}🔴"
         rating = "Needs Attention"
-    
+
     print(f"Health: {indicator} {score}/100 ({rating}){RESET}")
-    
+
     if issues:
         print("\\nIssues:")
         for issue in issues:
             print(f"  • {issue}")
 '''
-    )

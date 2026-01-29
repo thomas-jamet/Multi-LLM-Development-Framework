@@ -1,13 +1,31 @@
 # Bootstrap Source - Development Roadmap
 
-**Last Updated:** 2026-01-28  
-**Version:** 2026.26
+**Last Updated:** 2026-01-29 19:15
+**Version:** 2026.27
 
 ---
 
 ## Completed ✅
 
-### v2026 Modernization (2026-01-28)
+### v2026.27 Quality Improvements (2026-01-29)
+
+- [x] Installed and configured pre-commit hooks
+- [x] Integrated mypy type checking with explicit-package-bases flag
+- [x] Created comprehensive integration test suite (4 tests)
+- [x] Fixed critical build script bug (f-string template detection)
+- [x] Resolved all linting errors across codebase
+- [x] Added pytest and pytest-cov dependencies
+- [x] Refactored `core/templates.py` into 8 specialized modules
+  - Created `core/templates/` package structure
+  - Modules: configs, gemini_md, github_workflow, schemas, scripts_core, scripts_skills, scripts_snapshot
+  - Improved maintainability and adherence to <500 line guideline
+- [x] Conducted comprehensive code audit
+  - Health score: 92/100
+  - Zero linting errors confirmed
+  - Documentation completeness verified
+  - Test coverage assessed (402 LOC, 4 integration tests)
+
+### v2026.26 Modernization (2026-01-28)
 
 - [x] Created root `GEMINI.md` constitution
 - [x] Created `Makefile` with standard interface
@@ -30,15 +48,15 @@
 
 ## In Progress 🚧
 
-### Testing Infrastructure
+### Testing Infrastructure (Expanded)
 
-- [ ] Implement pytest-based unit tests
-- [ ] Add integration tests for build process
+- [x] Implement pytest-based integration tests
+- [ ] Add unit tests for core modules
 - [ ] Create regression test suite
 - [ ] Add CI/CD workflow (GitHub Actions)
 
-**Priority:** High  
-**Effort:** 2-3 sessions  
+**Priority:** High
+**Effort:** 1-2 sessions remaining
 **Blockers:** None
 
 ---
@@ -192,6 +210,7 @@ bootstrap.py -t 2 -n myapp --llm-provider anthropic
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2026.27 | 2026-01-29 | Quality improvements: pre-commit, mypy, integration tests, build fix |
 | 2026.26 | 2026-01-28 | v2026 compliance modernization |
 | 2026.25 | 2026-01-27 | Modular refactoring complete |
 | 2026.24 | 2026-01-26 | Build system implemented |
@@ -203,7 +222,7 @@ bootstrap.py -t 2 -n myapp --llm-provider anthropic
 
 Want to help? Check:
 
-1. **Backlog** above for planned work  
+1. **Backlog** above for planned work
 2. **[GitHub Issues]** for reported bugs
 3. **docs/onboarding.md** for getting started
 
@@ -218,11 +237,11 @@ Want to help? Check:
 
 ### Metrics
 
-- **Modules:** 8
-- **Total Lines:** 3,683 (modular source)
-- **Compiled Lines:** ~3,500
-- **Test Coverage:** 0% (to be implemented)
-- **Health Score:** 85/100
+- **Modules:** 15+ (8 core modules + 8 template modules)
+- **Total Lines:** 3,216 (core modular source)
+- **Compiled Lines:** 4,187 (bootstrap.py)
+- **Test Coverage:** Integration tests (4), Unit tests (0), Total test LOC: 402
+- **Health Score:** 92/100 (per 2026-01-29 audit)
 
 ### Next Milestone
 

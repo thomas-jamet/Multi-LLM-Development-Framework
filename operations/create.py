@@ -7,7 +7,6 @@ Handles workspace creation, validation, and upgrades.
 
 from pathlib import Path
 from typing import Dict, List
-import os
 import json
 import sys
 from datetime import datetime, timezone
@@ -20,7 +19,6 @@ from config import (
     DEFAULT_PYTHON_VERSION,
     TIERS,
     TEMPLATES,
-    GITIGNORE_PATTERNS,
     DEFAULT_REQUIREMENTS,
     EXECUTABLE_FILES,
     SNAPSHOTS_DIR,
@@ -53,7 +51,6 @@ from content_generators import (
     get_enterprise_eval_test_example,
 )
 
-import core
 from core import (
     validate_project_name,
     success,
@@ -69,6 +66,7 @@ from core import (
     ConfigurationError,
     UpgradeError,
     RollbackError,
+    _get_file_cache_key,
 )
 
 from functools import lru_cache
@@ -324,7 +322,41 @@ def create_workspace(
 
 
 @lru_cache(maxsize=128)
+def _validate_workspace_impl(base_path: str, cache_key: str):
+    """Internal implementation for workspace validation (cached).
 
+    Args:
+        base_path: Path to workspace
+        cache_key: Cache invalidation key (based on workspace.json mtime)
+
+    Returns:
+        Tuple of (workspace_dict, issues_list)
+    """
+    base = Path(base_path)
+    issues = []
+
+    ws_file = base / ".gemini/workspace.json"
+    if not ws_file.exists():
+        return {}, ["Missing .gemini/workspace.json"]
+
+    try:
+        with open(ws_file) as f:
+            ws = json.load(f)
+    except json.JSONDecodeError as e:
+        return {}, [f"Invalid workspace.json: {e}"]
+    except PermissionError:
+        return {}, ["Cannot read workspace.json (permission denied)"]
+
+    # Basic validation checks
+    if "tier" not in ws:
+        issues.append("Missing 'tier' in workspace.json")
+    if "version" not in ws:
+        issues.append("Missing 'version' in workspace.json")
+
+    return ws, issues
+
+
+@lru_cache(maxsize=128)
 def validate_workspace(path: str):
     """Validate an existing workspace against the standard.
 
@@ -374,6 +406,7 @@ def validate_workspace(path: str):
 
 
 # --- UPGRADE WORKSPACE ---
+
 
 def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = False):
     """Upgrade a workspace to a higher tier.
@@ -447,34 +480,34 @@ def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = Fal
     if final_target == "2":
         print(f"{_c(Colors.GREEN)}✅ Will Add:{_c(Colors.RESET)}")
         print(f"   📂 src/{pkg_name}/ - Modular package structure")
-        print(f"   📂 tests/unit/ - Unit test directory")
-        print(f"   📂 tests/integration/ - Integration test directory")
-        print(f"   📂 .snapshots/ - Snapshot/restore support")
-        print(f"   📄 pyproject.toml - Python package metadata")
-        print(f"   📄 .agent/skills/debug.md - Debug protocol")
-        print(f"   📄 .agent/workflows/feature.md - Feature workflow")
+        print("   📂 tests/unit/ - Unit test directory")
+        print("   📂 tests/integration/ - Integration test directory")
+        print("   📂 .snapshots/ - Snapshot/restore support")
+        print("   📄 pyproject.toml - Python package metadata")
+        print("   📄 .agent/skills/debug.md - Debug protocol")
+        print("   📄 .agent/workflows/feature.md - Feature workflow")
         print(f"\n{_c(Colors.YELLOW)}⚠️  Will Modify:{_c(Colors.RESET)}")
-        print(f"   📄 GEMINI.md - Role: 'Lead Software Engineer'")
-        print(f"   📄 Makefile - Add: test, snapshot, typecheck targets")
-        print(f"   📄 .gemini/settings.json - Update permissions")
+        print("   📄 GEMINI.md - Role: 'Lead Software Engineer'")
+        print("   📄 Makefile - Add: test, snapshot, typecheck targets")
+        print("   📄 .gemini/settings.json - Update permissions")
         print(f"\n{_c(Colors.RED)}🗑️  Will Remove:{_c(Colors.RESET)}")
-        print(f"   📄 requirements.txt - replaced by pyproject.toml")
+        print("   📄 requirements.txt - replaced by pyproject.toml")
     elif final_target == "3":
         print(f"{_c(Colors.GREEN)}✅ Will Add:{_c(Colors.RESET)}")
         print(f"   📂 src/{pkg_name}/domains/frontend/ - Frontend domain")
         print(f"   📂 src/{pkg_name}/domains/backend/ - Backend domain")
-        print(f"   📂 outputs/contracts/ - Inter-domain schemas")
-        print(f"   📂 tests/evals/ - Agent capability tests")
-        print(f"   📂 docs/decisions/ - Architecture Decision Records")
-        print(f"   📂 inputs/ - Read-only data directory")
-        print(f"   📄 scripts/shift_report.py - Handoff reports")
+        print("   📂 outputs/contracts/ - Inter-domain schemas")
+        print("   📂 tests/evals/ - Agent capability tests")
+        print("   📂 docs/decisions/ - Architecture Decision Records")
+        print("   📂 inputs/ - Read-only data directory")
+        print("   📄 scripts/shift_report.py - Handoff reports")
         print(f"\n{_c(Colors.YELLOW)}⚠️  Will Modify:{_c(Colors.RESET)}")
-        print(f"   📄 GEMINI.md - Role: 'CTO / Architect'")
-        print(f"   📄 Makefile - Add: scan, eval, shift-report, lock targets")
-        print(f"   📄 .gemini/settings.json - Update permissions")
+        print("   📄 GEMINI.md - Role: 'CTO / Architect'")
+        print("   📄 Makefile - Add: scan, eval, shift-report, lock targets")
+        print("   📄 .gemini/settings.json - Update permissions")
 
     print(f"\n{_c(Colors.BLUE)}📦 Backup:{_c(Colors.RESET)}")
-    print(f"   Modified files are saved to .gemini/backups/pre_upgrade_<TIMESTAMP>/")
+    print("   Modified files are saved to .gemini/backups/pre_upgrade_<TIMESTAMP>/")
 
     # Confirmation unless --yes is passed
     if not yes:
@@ -504,10 +537,14 @@ def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = Fal
             )
 
         if not (base / ".agent/skills/debug.md").exists():
-            (base / ".agent/skills/debug.md").write_text("# Debug Skill\n\nDebug protocol skill.")
+            (base / ".agent/skills/debug.md").write_text(
+                "# Debug Skill\n\nDebug protocol skill."
+            )
 
         if not (base / ".agent/workflows/feature.md").exists():
-            (base / ".agent/workflows/feature.md").write_text("# Feature Workflow\n\nFeature implementation workflow.")
+            (base / ".agent/workflows/feature.md").write_text(
+                "# Feature Workflow\n\nFeature implementation workflow."
+            )
 
         # Clean up Lite tier artifacts
         if (base / "requirements.txt").exists():
@@ -564,7 +601,6 @@ def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = Fal
     for fname in backup_files:
         fpath = base / fname
         if fpath.exists():
-            backup_name = fpath.name
             # Handle nested files by flattening or keeping structure relative to backup_dir?
             # Simple flatten for these specific files is usually okay, but let's be safe
             dest = backup_dir / fname
@@ -592,6 +628,7 @@ def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = Fal
 
 
 # --- UPDATE SCRIPTS ---
+
 
 def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = False):
     """Rollback workspace to a previous state from backup or snapshot.
@@ -768,13 +805,14 @@ def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = Fa
 # --- EXPORT WORKSPACE AS TEMPLATE ---
 # --- INTERNAL HELPER FUNCTIONS ---
 
+
 def _get_script_path(tier: str, script_name: str) -> str:
     """Get tier-specific path for a script.
-    
+
     Args:
         tier: Workspace tier ("1", "2", or "3")
         script_name: Script name without extension (e.g., "run_audit")
-        
+
     Returns:
         Full path relative to workspace root (e.g., "scripts/workspace/run_audit.py")
     """
@@ -795,10 +833,11 @@ def _get_script_path(tier: str, script_name: str) -> str:
         # Fallback
         return f"scripts/shared/{script_name}.py"
 
+
 def _build_workspace_directories(tier: str, pkg_name: str) -> List[str]:
     """Build list of directories to create."""
     dirs = get_all_directories(tier).copy()
-    
+
     # Add script category directories based on tier
     if tier == "2":  # Standard: categorized structure
         for category in SCRIPT_CATEGORIES["2"].keys():
@@ -808,25 +847,18 @@ def _build_workspace_directories(tier: str, pkg_name: str) -> List[str]:
         for category in SCRIPT_CATEGORIES["3"].keys():
             if category:  # Skip empty key
                 dirs.append(f"scripts/{category}")
-    
+
     # Add data directories based on tier (Tiered Data Pattern)
     if tier in ["1", "2"]:  # Lite/Standard: flat data structure
-        dirs.extend([
-            "data/inputs",
-            "data/outputs"
-        ])
-    else:  # Enterprise: domain-based data structure  
+        dirs.extend(["data/inputs", "data/outputs"])
+    else:  # Enterprise: domain-based data structure
         # TODO: Implement domain prompting for Enterprise
         domain = "core"  # Default for now
-        dirs.extend([
-            f"data/{domain}/inputs",
-            f"data/{domain}/outputs",
-            "data/shared"
-        ])
-    
+        dirs.extend([f"data/{domain}/inputs", f"data/{domain}/outputs", "data/shared"])
+
     if tier != "1":
         dirs.append(f"src/{pkg_name}")
-    
+
     return sorted(list(set(dirs)))
 
 
@@ -837,28 +869,32 @@ def _build_workspace_files(
     parent: str | None,
     python_version: str,
     template_files: dict | None,
-    template_deps: list | None
+    template_deps: list | None,
 ) -> Dict[str, str]:
     """Build dictionary of {path: content} for all workspace files."""
     files = {}
-    
+
     # Core
     files["GEMINI.md"] = get_gemini_md(tier, pkg_name)
     files["Makefile"] = get_makefile(tier, pkg_name)
-    files["README.md"] = f"# {name}\n\nGenerated Gemini Workspace ({TIERS[tier]['name']})\n"
+    files["README.md"] = (
+        f"# {name}\n\nGenerated Gemini Workspace ({TIERS[tier]['name']})\n"
+    )
     files[".gitignore"] = "\n".join(get_gitignore_for_tier(tier))
-    
+
     # Configuration
-    files[".gemini/workspace.json"] = json.dumps({
-        "version": VERSION,
-        "tier": tier,
-        "name": name,
-        "created": datetime.now(timezone.utc).astimezone().isoformat(),
-        "standard": "Gemini Native Workspace Standard",
-        "parent_workspace": parent
-    }, indent=2)
-    
-    
+    files[".gemini/workspace.json"] = json.dumps(
+        {
+            "version": VERSION,
+            "tier": tier,
+            "name": name,
+            "created": datetime.now(timezone.utc).astimezone().isoformat(),
+            "standard": "Gemini Native Workspace Standard",
+            "parent_workspace": parent,
+        },
+        indent=2,
+    )
+
     # Scripts - use tier-specific paths
     files[_get_script_path(tier, "run_audit")] = get_run_audit_script()
     files[_get_script_path(tier, "manage_session")] = get_manage_session_script()
@@ -866,25 +902,27 @@ def _build_workspace_files(
     files[_get_script_path(tier, "check_status")] = get_check_status_script()
     files[_get_script_path(tier, "list_skills")] = get_list_skills_script()
     files[_get_script_path(tier, "manage_skills")] = get_manage_skills_script()
-    
+
     # Snapshot script for Standard and Enterprise tiers
     if tier in ["2", "3"]:
         files[_get_script_path(tier, "create_snapshot")] = get_create_snapshot_script()
-    
+
     # Discovery (Standard & Enterprise only)
     if tier != "1":
         files[_get_script_path(tier, "explore_skills")] = get_explore_skills_script()
         files[".agent/workflows/discover_skills.md"] = get_skill_discovery_workflow()
-    
+
     # Documentation
     files["docs/roadmap.md"] = f"# Roadmap: {name}\n\n- [ ] Initial Setup"
-    
+
     # CI/CD
     files[".github/workflows/ci.yml"] = get_github_workflow(tier, python_version)
-    
+
     # Python files for Tier 2+
     if tier != "1":
-        files["pyproject.toml"] = f'[project]\nname = "{pkg_name}"\nversion = "0.1.0"\nrequires-python = ">={python_version}"\ndependencies = []'
+        files["pyproject.toml"] = (
+            f'[project]\nname = "{pkg_name}"\nversion = "0.1.0"\nrequires-python = ">={python_version}"\ndependencies = []'
+        )
         files[f"src/{pkg_name}/__init__.py"] = ""
         files[f"src/{pkg_name}/main.py"] = """def main():
     print("Hello World")
@@ -892,23 +930,33 @@ def _build_workspace_files(
 if __name__ == "__main__":
     main()
 """
-        
+
         # Tests
         if tier == "2":
-            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(pkg_name)
-            files[f"tests/integration/test_integration.py"] = get_standard_integration_test_example(pkg_name)
+            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(
+                pkg_name
+            )
+            files["tests/integration/test_integration.py"] = (
+                get_standard_integration_test_example(pkg_name)
+            )
         elif tier == "3":
-            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(pkg_name)
-            files[f"tests/integration/test_integration.py"] = get_standard_integration_test_example(pkg_name)
-            files[f"tests/evals/test_evals.py"] = get_enterprise_eval_test_example(pkg_name)
+            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(
+                pkg_name
+            )
+            files["tests/integration/test_integration.py"] = (
+                get_standard_integration_test_example(pkg_name)
+            )
+            files["tests/evals/test_evals.py"] = get_enterprise_eval_test_example(
+                pkg_name
+            )
     else:
         files["src/main.py"] = 'print("Hello World")'
         files["requirements.txt"] = "\n".join(DEFAULT_REQUIREMENTS["1"])
-    
+
     # Add .gitkeep files for hygiene and data directories
     files["logs/.gitkeep"] = ""
     files["scratchpad/.gitkeep"] = ""
-    
+
     # Add .gitkeep for data directories based on tier
     if tier in ["1", "2"]:  # Lite/Standard: flat data structure
         files["data/inputs/.gitkeep"] = ""
@@ -916,8 +964,9 @@ if __name__ == "__main__":
         domain = "core"  # Match domain from _build_workspace_directories
         files[f"data/{domain}/inputs/.gitkeep"] = ""
         files["data/shared/.gitkeep"] = ""
-        
+
     return files
+
 
 def _write_file_safe(base: Path, path_str: str, content: str):
     """Write file safely with error handling (for thread pool)."""
@@ -931,20 +980,24 @@ def _write_file_safe(base: Path, path_str: str, content: str):
     except Exception as e:
         return path_str, str(e)
 
+
 def show_dry_run_summary(tier, name, template_name, cwd):
     header(f"Dry Run: Creating {name}")
     print(f"Tier: {tier} ({TIERS[tier]['name']})")
     print(f"Path: {cwd}/{name}")
 
+
 def log_bootstrap_event(*args, **kwargs):
-    pass # Telemetry placeholder
+    pass  # Telemetry placeholder
+
 
 def get_shift_report_script():
     return "# Shift Report\n"
 
+
 def get_vscode_settings():
     return "{}"
 
+
 def get_settings(tier):
     return "{}"
-
