@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import json
+import hashlib
 import logging
 from pathlib import Path
 from datetime import datetime, timezone

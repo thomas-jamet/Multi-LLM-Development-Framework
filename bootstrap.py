@@ -19,7 +19,7 @@ Features:
 
 Build Information:
     Version: 2026.26
-    Built: 2026-01-29 09:51:49 UTC
+    Built: 2026-01-29 10:21:50 UTC
     Source: Modular architecture (bootstrap_src/)
 
 This file is AUTO-GENERATED from modular source.
@@ -32,6 +32,7 @@ import os
 import re
 import sys
 import json
+import hashlib
 import logging
 from pathlib import Path
 from datetime import datetime, timezone
@@ -4129,7 +4130,13 @@ def get_settings(tier):
 Bootstrap CLI Entry Point
 
 Handles command-line argument parsing and main() function.
+
+NOTE: This module contains forward references to symbols from other modules
+(TIERS, TEMPLATES, ValidationError, error(), etc.) that are resolved during
+the build process when all modules are concatenated. Lint errors for these
+are expected and suppressed with # noqa: F821 comments.
 """
+# ruff: noqa: F821  # Forward references resolved at build time
 
 
 # Version constant (imported from config in final build)  
@@ -4178,10 +4185,10 @@ def run_self_tests():
     
     # Test 2: Tier definitions exist
     test("TIERS defined with 3 tiers", 
-         len(TIERS) == 3 and all(k in TIERS for k in ["1", "2", "3"]))
+         len(TIERS) == 3 and all(k in TIERS for k in ["1", "2", "3"]))  # noqa: F821 - TIERS imported from config in build
     
     # Test 3: Each tier has required keys
-    for tier_id, tier_data in TIERS.items():
+    for tier_id, tier_data in TIERS.items():  # noqa: F821
         test(f"Tier {tier_id} has 'name' key", "name" in tier_data)
     
     # Test 4: Exit codes defined
@@ -4195,7 +4202,7 @@ def run_self_tests():
         test("validate_project_name accepts valid name", True)
     except NameError:
         test("validate_project_name available", False)
-    except ValidationError:
+    except ValidationError:  # noqa: F821 - ValidationError imported from core in build
         test("validate_project_name accepts valid name", False)
     
     try:
@@ -4204,11 +4211,11 @@ def run_self_tests():
         test("validate_project_name rejects invalid name", False)
     except NameError:
         pass  # Already reported above
-    except ValidationError:
+    except ValidationError:  # noqa: F821
         test("validate_project_name rejects invalid name", True)
     
     # Test 6: Template consistency
-    for tmpl_name, tmpl_config in TEMPLATES.items():
+    for tmpl_name, tmpl_config in TEMPLATES.items():  # noqa: F821 - TEMPLATES imported from config in build
         test(f"Template '{tmpl_name}' has tier", "tier" in tmpl_config)
     
     # Summary
@@ -4226,22 +4233,22 @@ def run_self_tests():
 def main():
     try:
         _main_impl()
-    except ValidationError as e:
+    except ValidationError as e:  # noqa: F821
         error(f"Validation failed: {e}")
         sys.exit(EXIT_VALIDATION_ERROR)
-    except CreationError as e:
+    except CreationError as e:  # noqa: F821
         error(f"Workspace creation failed: {e}")
         sys.exit(EXIT_CREATION_ERROR)
-    except UpgradeError as e:
+    except UpgradeError as e:  # noqa: F821
         error(f"Upgrade failed: {e}")
         sys.exit(EXIT_UPGRADE_ERROR)
-    except RollbackError as e:
+    except RollbackError as e:  # noqa: F821
         error(f"Rollback failed: {e}")
         sys.exit(EXIT_ROLLBACK_ERROR)
-    except ConfigurationError as e:
+    except ConfigurationError as e:  # noqa: F821
         error(f"Configuration error: {e}")
         sys.exit(EXIT_CONFIG_ERROR)
-    except WorkspaceError as e:
+    except WorkspaceError as e:  # noqa: F821
         error(f"Workspace operation failed: {e}")
         sys.exit(EXIT_WORKSPACE_ERROR)
     except KeyboardInterrupt:
@@ -4414,7 +4421,7 @@ After creation:
 
     # Handle show-telemetry-info
     if args.show_telemetry_info:
-        show_telemetry_info()
+        show_telemetry_info()  # noqa: F821 - Function defined in operations module
         return
 
     # Handle self-tests
@@ -4499,7 +4506,7 @@ After creation:
             try:
                 validate_project_name(args.name)
                 break
-            except ValidationError as e:
+            except ValidationError as e:  # noqa: F821
                 error(str(e))
 
     # Apply config defaults

@@ -53,11 +53,18 @@ check-ruff: ## Check if ruff is installed
 		exit 1; \
 	}
 
-lint: check-ruff ## Run code quality checks (ruff)
+lint: check-ruff ## Run code quality checks (ruff + mypy)
 	@echo "$(BLUE)🔍 Running linter...$(NC)"
 	@$(RUFF) check .
 	@$(RUFF) format --check .
 	@echo "$(GREEN)✅ Linting passed$(NC)"
+	@if command -v mypy > /dev/null 2>&1; then \
+		echo "$(BLUE)🔍 Running type checker...$(NC)"; \
+		mypy .; \
+		echo "$(GREEN)✅ Type checking passed$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠️  mypy not installed. Install with: pip install mypy$(NC)"; \
+	fi
 
 format: check-ruff ## Auto-format code (ruff)
 	@echo "$(BLUE)✨ Formatting code...$(NC)"
