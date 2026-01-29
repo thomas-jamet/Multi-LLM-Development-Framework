@@ -7,6 +7,24 @@ Final Makefile = TIER-SPECIFIC + COMMON
 """
 
 
+from config import SCRIPT_CATEGORIES
+
+def _script_path(tier: str, script_name: str) -> str:
+    """Get tier-specific path for a script."""
+    if tier == "1":
+        return f"scripts/{script_name}.py"
+    elif tier == "2":
+        for cat, scripts in SCRIPT_CATEGORIES["2"].items():
+            if script_name in scripts:
+                return f"scripts/{cat}/{script_name}.py"
+        return f"scripts/{script_name}.py"
+    else:
+        for cat, scripts in SCRIPT_CATEGORIES["3"].items():
+            if script_name in scripts:
+                return f"scripts/{cat}/{script_name}.py"
+        return f"scripts/shared/{script_name}.py"
+
+
 def get_makefile(tier: str, project_name: str) -> str:
     """
     Generate complete Makefile for specified tier.
@@ -81,7 +99,7 @@ install: ## Install dependencies from requirements.txt
 # PURPOSE: Check local CI status.
 ci-local: ## Run local CI audit and lint checks
 	@echo "$(BLUE)🔄 Running local CI checks...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/run_audit.py
 	@ruff check . || true
 	@echo "$(GREEN)✅ Local CI complete (Lite tier - no tests)$(NC)"
 
@@ -92,7 +110,7 @@ doctor: ## Diagnose common issues and check structure
 	@echo "$(BLUE)📦 Checking dependencies...$(NC)"
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/run_audit.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -101,14 +119,14 @@ doctor: ## Diagnose common issues and check structure
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/session.py start -- "${msg}"
+	@python3 scripts/manage_session.py start -- "${msg}"
 
 # PURPOSE: finalize your work, index it, and sync to GitHub (Lite tier - no quality gates).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
 session-end: ## Close session: indices docs, commits & pushes (optional msg="...")
 	@echo "$(BLUE)📤 Finalizing workspace...$(NC)"
-	@python3 scripts/doc_indexer.py
-	@python3 scripts/audit.py
+	@python3 scripts/index_docs.py
+	@python3 scripts/run_audit.py
 	@make clean
 	@if [ -d .git ]; then \\
 		git add .; \\
@@ -121,7 +139,7 @@ session-end: ## Close session: indices docs, commits & pushes (optional msg="...
 	else \\
 		echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${msg}"
+	@python3 scripts/manage_session.py end -- "${msg}"
 """
     elif tier == "2":
         return f"""# Gemini Standard Workspace
@@ -204,7 +222,7 @@ docs: ## Build static documentation (HTML) if configured with mkdocs
 # PURPOSE: Refresh the master index of all documents.
 index: ## Regenerate the master Table of Contents in README.md
 	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
-	@python3 scripts/doc_indexer.py
+	@python3 scripts/docs/index_docs.py
 
 # ==============================================================================
 # 📦 ENVIRONMENT MANAGEMENT
@@ -227,7 +245,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 	@echo "$(BLUE)📦 Checking dependencies...$(NC)"
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/workspace/run_audit.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -236,7 +254,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/session.py start -- "${{msg}}"
+	@python3 scripts/workspace/manage_session.py start -- "${{msg}}"
 
 # PURPOSE: finalize your work, runs quality checks, and sync to GitHub (Standard tier).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
@@ -246,8 +264,8 @@ session-end: ## Close session: runs lint/tests, commits & pushes (optional msg="
 	@$(MAKE) lint || ( echo "$(RED)❌ Linting failed$(NC)" && exit 1 )
 	@echo "$(BLUE)🧪 Testing...$(NC)"
 	@$(MAKE) test || ( echo "$(RED)❌ Tests failed$(NC)" && exit 1 )
-	@python3 scripts/doc_indexer.py
-	@python3 scripts/audit.py
+	@python3 scripts/docs/index_docs.py
+	@python3 scripts/workspace/run_audit.py
 	@$(MAKE) clean
 	@if [ -d .git ]; then \\
 		git add .; \\
@@ -260,7 +278,7 @@ session-end: ## Close session: runs lint/tests, commits & pushes (optional msg="
 	else \\
 			echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${{msg}}"
+	@python3 scripts/workspace/manage_session.py end -- "${{msg}}"
 	@echo "$(GREEN)✅ Quality checks passed!$(NC)"
 
 # ==============================================================================
@@ -271,12 +289,12 @@ session-end: ## Close session: runs lint/tests, commits & pushes (optional msg="
 # WHEN: Use before major or risky changes.
 snapshot: ## Create an immutable local backup of your workspace state
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for snapshot$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py create "${{name}}"
+	@python3 scripts/workspace/create_snapshot.py create "${{name}}"
 
 # PURPOSE: Revert to a previous "Save Point".
 restore: ## Revert workspace to a previous snapshot (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for restore$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py restore "${{name}}" $(if $(yes),--yes,)
+	@python3 scripts/workspace/create_snapshot.py restore "${{name}}" $(if $(yes),--yes,)
 
 # PURPOSE: Standard backup.
 backup: snapshot ## Alias for snapshot
@@ -386,7 +404,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 	@command -v uv >/dev/null 2>&1 && echo "$(GREEN)✅ uv available$(NC)" || echo "$(YELLOW)⚠️  uv not found (using pip fallback)$(NC)"
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/shared/run_audit.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -395,7 +413,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/session.py start -- "${{msg}}"
+	@python3 scripts/shared/manage_session.py start -- "${{msg}}"
 
 # PURPOSE: finalize your work, runs all quality checks, and sync to GitHub (Enterprise tier).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
@@ -407,8 +425,8 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes (optional
 	@$(MAKE) test || ( echo "$(RED)❌ Tests failed$(NC)" && exit 1 )
 	@echo "$(BLUE)🧠 Evaluating...$(NC)"
 	@$(MAKE) eval || ( echo "$(RED)❌ Evals failed$(NC)" && exit 1 )
-	@python3 scripts/doc_indexer.py
-	@python3 scripts/audit.py
+	@python3 scripts/shared/index_docs.py
+	@python3 scripts/shared/run_audit.py
 	@$(MAKE) clean
 	@if [ -d .git ]; then \\
 		git add .; \\
@@ -421,7 +439,7 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes (optional
 	else \\
 			echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${{msg}}"
+	@python3 scripts/shared/manage_session.py end -- "${{msg}}"
 	@echo "$(GREEN)✅ All quality checks passed!$(NC)"
 
 # ==============================================================================
@@ -435,12 +453,12 @@ shift-report: ## Generate handoff report
 # PURPOSE: Enterprise "Save Point".
 snapshot: ## Create an immutable local backup of your workspace state
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for snapshot$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py create "${{name}}"
+	@python3 scripts/shared/create_snapshot.py create "${{name}}"
 
 # PURPOSE: Revert to "Save Point".
 restore: ## Revert workspace to a previous snapshot (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for restore$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py restore "${{name}}" $(if $(yes),--yes,)
+	@python3 scripts/shared/create_snapshot.py restore "${{name}}" $(if $(yes),--yes,)
 
 # PURPOSE: Standard backup.
 backup: snapshot ## Alias for snapshot

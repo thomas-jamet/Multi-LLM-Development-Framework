@@ -9,10 +9,69 @@ from pathlib import Path
 from typing import Dict, List
 import os
 import json
+import sys
 from datetime import datetime, timezone
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from config import (
+    VERSION,
+    DEFAULT_PYTHON_VERSION,
+    TIERS,
+    TEMPLATES,
+    GITIGNORE_PATTERNS,
+    DEFAULT_REQUIREMENTS,
+    EXECUTABLE_FILES,
+    SNAPSHOTS_DIR,
+    get_all_directories,
+    get_gitignore_for_tier,
+    SCRIPT_CATEGORIES,
+)
+
+from core.templates import (
+    get_gemini_md,
+    get_run_audit_script,
+    get_manage_session_script,
+    get_index_docs_script,
+    get_check_status_script,
+    get_list_skills_script,
+    get_manage_skills_script,
+    get_explore_skills_script,
+    get_create_snapshot_script,
+    get_skill_discovery_workflow,
+    get_github_workflow,
+)
+
+from core.makefile import (
+    get_makefile,
+)
+
+from content_generators import (
+    get_standard_unit_test_example,
+    get_standard_integration_test_example,
+    get_enterprise_eval_test_example,
+)
+
+import core
+from core import (
+    validate_project_name,
+    success,
+    error,
+    warning,
+    info,
+    header,
+    dim,
+    _c,
+    Colors,
+    CreationError,
+    ValidationError,
+    ConfigurationError,
+    UpgradeError,
+    RollbackError,
+)
+
+from functools import lru_cache
 
 
 def create_workspace(
@@ -445,10 +504,10 @@ def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = Fal
             )
 
         if not (base / ".agent/skills/debug.md").exists():
-            (base / ".agent/skills/debug.md").write_text(SKILL_DEBUG)
+            (base / ".agent/skills/debug.md").write_text("# Debug Skill\n\nDebug protocol skill.")
 
         if not (base / ".agent/workflows/feature.md").exists():
-            (base / ".agent/workflows/feature.md").write_text(WORKFLOW_FEATURE)
+            (base / ".agent/workflows/feature.md").write_text("# Feature Workflow\n\nFeature implementation workflow.")
 
         # Clean up Lite tier artifacts
         if (base / "requirements.txt").exists():
@@ -709,12 +768,67 @@ def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = Fa
 # --- EXPORT WORKSPACE AS TEMPLATE ---
 # --- INTERNAL HELPER FUNCTIONS ---
 
+def _get_script_path(tier: str, script_name: str) -> str:
+    """Get tier-specific path for a script.
+    
+    Args:
+        tier: Workspace tier ("1", "2", or "3")
+        script_name: Script name without extension (e.g., "run_audit")
+        
+    Returns:
+        Full path relative to workspace root (e.g., "scripts/workspace/run_audit.py")
+    """
+    if tier == "1":  # Lite: flat structure
+        return f"scripts/{script_name}.py"
+    elif tier == "2":  # Standard: categorized
+        # Find which category this script belongs to
+        for category, scripts in SCRIPT_CATEGORIES["2"].items():
+            if script_name in scripts:
+                return f"scripts/{category}/{script_name}.py"
+        # Fallback
+        return f"scripts/{script_name}.py"
+    else:  # Enterprise: domain-based
+        # Default to shared for standard scripts
+        for category, scripts in SCRIPT_CATEGORIES["3"].items():
+            if script_name in scripts:
+                return f"scripts/{category}/{script_name}.py"
+        # Fallback
+        return f"scripts/shared/{script_name}.py"
+
 def _build_workspace_directories(tier: str, pkg_name: str) -> List[str]:
     """Build list of directories to create."""
-    dirs = get_all_directories(tier)
+    dirs = get_all_directories(tier).copy()
+    
+    # Add script category directories based on tier
+    if tier == "2":  # Standard: categorized structure
+        for category in SCRIPT_CATEGORIES["2"].keys():
+            if category:  # Skip empty key (flat dirs)
+                dirs.append(f"scripts/{category}")
+    elif tier == "3":  # Enterprise: domain-based structure
+        for category in SCRIPT_CATEGORIES["3"].keys():
+            if category:  # Skip empty key
+                dirs.append(f"scripts/{category}")
+    
+    # Add data directories based on tier (Tiered Data Pattern)
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        dirs.extend([
+            "data/inputs",
+            "data/outputs"
+        ])
+    else:  # Enterprise: domain-based data structure  
+        # TODO: Implement domain prompting for Enterprise
+        domain = "core"  # Default for now
+        dirs.extend([
+            f"data/{domain}/inputs",
+            f"data/{domain}/outputs",
+            "data/shared"
+        ])
+    
     if tier != "1":
         dirs.append(f"src/{pkg_name}")
+    
     return sorted(list(set(dirs)))
+
 
 def _build_workspace_files(
     tier: str,
@@ -732,7 +846,7 @@ def _build_workspace_files(
     files["GEMINI.md"] = get_gemini_md(tier, pkg_name)
     files["Makefile"] = get_makefile(tier, pkg_name)
     files["README.md"] = f"# {name}\n\nGenerated Gemini Workspace ({TIERS[tier]['name']})\n"
-    files[".gitignore"] = "\n".join(GITIGNORE_PATTERNS)
+    files[".gitignore"] = "\n".join(get_gitignore_for_tier(tier))
     
     # Configuration
     files[".gemini/workspace.json"] = json.dumps({
@@ -744,17 +858,22 @@ def _build_workspace_files(
         "parent_workspace": parent
     }, indent=2)
     
-    # Scripts
-    files["scripts/audit.py"] = get_audit_script()
-    files["scripts/session.py"] = get_session_script()
-    files["scripts/doc_indexer.py"] = get_doc_indexer_script()
-    files["scripts/status.py"] = get_status_script()
-    files["scripts/list_skills.py"] = get_list_skills_script()
-    files["scripts/skill_manager.py"] = get_skill_manager_script()
+    
+    # Scripts - use tier-specific paths
+    files[_get_script_path(tier, "run_audit")] = get_run_audit_script()
+    files[_get_script_path(tier, "manage_session")] = get_manage_session_script()
+    files[_get_script_path(tier, "index_docs")] = get_index_docs_script()
+    files[_get_script_path(tier, "check_status")] = get_check_status_script()
+    files[_get_script_path(tier, "list_skills")] = get_list_skills_script()
+    files[_get_script_path(tier, "manage_skills")] = get_manage_skills_script()
+    
+    # Snapshot script for Standard and Enterprise tiers
+    if tier in ["2", "3"]:
+        files[_get_script_path(tier, "create_snapshot")] = get_create_snapshot_script()
     
     # Discovery (Standard & Enterprise only)
     if tier != "1":
-        files["scripts/skill_explorer.py"] = get_skill_explorer_script()
+        files[_get_script_path(tier, "explore_skills")] = get_explore_skills_script()
         files[".agent/workflows/discover_skills.md"] = get_skill_discovery_workflow()
     
     # Documentation
@@ -785,6 +904,18 @@ if __name__ == "__main__":
     else:
         files["src/main.py"] = 'print("Hello World")'
         files["requirements.txt"] = "\n".join(DEFAULT_REQUIREMENTS["1"])
+    
+    # Add .gitkeep files for hygiene and data directories
+    files["logs/.gitkeep"] = ""
+    files["scratchpad/.gitkeep"] = ""
+    
+    # Add .gitkeep for data directories based on tier
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        files["data/inputs/.gitkeep"] = ""
+    else:  # Enterprise: domain-based data structure
+        domain = "core"  # Match domain from _build_workspace_directories
+        files[f"data/{domain}/inputs/.gitkeep"] = ""
+        files["data/shared/.gitkeep"] = ""
         
     return files
 

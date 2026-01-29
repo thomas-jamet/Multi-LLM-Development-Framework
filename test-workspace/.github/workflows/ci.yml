@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Audit workspace
+        run: python scripts/audit.py
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -q -e ".[dev]"
+      - name: Run tests
+        run: pytest tests/ -q
+      - name: Run tests with coverage (optional)
+        run: |
+          pip install -q pytest-cov 2>/dev/null || true
+          pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=0 2>/dev/null || true
+        continue-on-error: true

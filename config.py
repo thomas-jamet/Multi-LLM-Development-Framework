@@ -104,6 +104,9 @@ EXECUTABLE_FILES = [
     "scripts/skills/explore_skills.py"
 ]
 
+# Snapshot configuration
+SNAPSHOTS_DIR = ".snapshots"
+
 # Color Codes for Terminal Output
 COLORS = {
     "BLUE": "\\033[1;34m",
@@ -306,9 +309,9 @@ def get_gitignore_for_tier(tier: str) -> List[str]:
 
 # Tier Metadata
 TIERS = {
-    "1": {"name": "Lite", "desc": "Lightweight workspace with basic features"},
-    "2": {"name": "Standard", "desc": "Full-featured workspace with testing"},
-    "3": {"name": "Enterprise", "desc": "Enterprise workspace with advanced features"}
+    "1": {"name": "Lite", "desc": "Lightweight workspace with basic features", "order": 1},
+    "2": {"name": "Standard", "desc": "Full-featured workspace with testing", "order": 2},
+    "3": {"name": "Enterprise", "desc": "Enterprise workspace with advanced features", "order": 3}
 }
 
 # Templates (placeholder - can be extended)

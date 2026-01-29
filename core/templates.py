@@ -8,6 +8,8 @@ Generates all file templates: GEMINI.md, scripts, schemas, configs.
 from typing import Dict
 import json
 
+from config import DEFAULT_PYTHON_VERSION
+
 
 # Version constant (imported from config in final build)
 VERSION = "2026.26"

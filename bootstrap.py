@@ -19,7 +19,7 @@ Features:
 
 Build Information:
     Version: 2026.26
-    Built: 2026-01-28 10:56:44 UTC
+    Built: 2026-01-29 09:38:54 UTC
     Source: Modular architecture (bootstrap_src/)
 
 This file is AUTO-GENERATED from modular source.
@@ -43,6 +43,7 @@ from typing import Dict
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import core
 import argparse
 
 
@@ -112,16 +113,50 @@ TIER_SPECIFIC_DIRECTORIES = {
     ]
 }
 
-# File Permissions
-EXECUTABLE_FILES = [
-    "scripts/audit.py",
-    "scripts/session.py",
-    "scripts/doc_indexer.py",
-    "scripts/status.py",
-    "scripts/list_skills.py",
-    "scripts/skill_manager.py",
-    "scripts/skill_explorer.py"
+# Script Organization Patterns
+# Maps tier -> category -> list of script names (without .py extension)
+SCRIPT_CATEGORIES = {
+    "1": {  # Lite: flat structure in scripts/
+        "": ["run_audit", "manage_session", "check_status", "index_docs", 
+             "list_skills", "manage_skills", "explore_skills"]
+    },
+    "2": {  # Standard: functional categories
+        "workspace": ["run_audit", "manage_session", "check_status", "create_snapshot"],
+        "skills": ["list_skills", "manage_skills", "explore_skills"],
+        "docs": ["index_docs"]
+    },
+    "3": {  # Enterprise: domain-based (shared is default)
+        "shared": ["run_audit", "manage_session", "check_status", "create_snapshot"]
+    }
+}
+
+# Standard script verbs for verb_noun.py naming convention
+SCRIPT_VERBS = [
+    "run",      # Execute processes (audit, tests)
+    "check",    # Inspections (status, health)
+    "manage",   # CRUD operations (session, config, skills)
+    "generate", # Create artifacts (reports, docs)
+    "sync",     # Data synchronization
+    "index",    # Build search indices
+    "list",     # Display collections
+    "create",   # Create new items (snapshots)
+    "explore"   # Discovery/exploration (skills)
 ]
+
+# File Permissions (Standard tier paths as reference)
+EXECUTABLE_FILES = [
+    "scripts/workspace/run_audit.py",
+    "scripts/workspace/manage_session.py",
+    "scripts/workspace/check_status.py",
+    "scripts/workspace/create_snapshot.py",
+    "scripts/docs/index_docs.py",
+    "scripts/skills/list_skills.py",
+    "scripts/skills/manage_skills.py",
+    "scripts/skills/explore_skills.py"
+]
+
+# Snapshot configuration
+SNAPSHOTS_DIR = ".snapshots"
 
 # Color Codes for Terminal Output
 COLORS = {
@@ -291,11 +326,43 @@ def get_phony_targets(tier: str) -> List[str]:
     return PHONY_TARGETS.get(tier, PHONY_TARGETS["1"])
 
 
+def get_gitignore_for_tier(tier: str) -> List[str]:
+    """Get complete .gitignore patterns for a tier including data directories.
+    
+    Args:
+        tier: Workspace tier ("1" for Lite, "2" for Standard, "3" for Enterprise)
+        
+    Returns:
+        Complete list of gitignore patterns
+    """
+    patterns = GITIGNORE_PATTERNS.copy()
+    
+    # Add tier-specific data patterns
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        patterns.extend([
+            "",
+            "# Data (Lite/Standard tier pattern)",
+            "data/inputs/*",
+            "!data/inputs/.gitkeep",
+            "data/outputs/*"
+        ])
+    else:  # Enterprise: domain-based data structure
+        patterns.extend([
+            "",
+            "# Data (Enterprise tier pattern)",
+            "data/*/inputs/*",
+            "data/*/outputs/*",
+            "!data/*/.gitkeep"
+        ])
+    
+    return patterns
+
+
 # Tier Metadata
 TIERS = {
-    "1": {"name": "Lite", "desc": "Lightweight workspace with basic features"},
-    "2": {"name": "Standard", "desc": "Full-featured workspace with testing"},
-    "3": {"name": "Enterprise", "desc": "Enterprise workspace with advanced features"}
+    "1": {"name": "Lite", "desc": "Lightweight workspace with basic features", "order": 1},
+    "2": {"name": "Standard", "desc": "Full-featured workspace with testing", "order": 2},
+    "3": {"name": "Enterprise", "desc": "Enterprise workspace with advanced features", "order": 3}
 }
 
 # Templates (placeholder - can be extended)
@@ -831,6 +898,23 @@ Final Makefile = TIER-SPECIFIC + COMMON
 """
 
 
+
+def _script_path(tier: str, script_name: str) -> str:
+    """Get tier-specific path for a script."""
+    if tier == "1":
+        return f"scripts/{script_name}.py"
+    elif tier == "2":
+        for cat, scripts in SCRIPT_CATEGORIES["2"].items():
+            if script_name in scripts:
+                return f"scripts/{cat}/{script_name}.py"
+        return f"scripts/{script_name}.py"
+    else:
+        for cat, scripts in SCRIPT_CATEGORIES["3"].items():
+            if script_name in scripts:
+                return f"scripts/{cat}/{script_name}.py"
+        return f"scripts/shared/{script_name}.py"
+
+
 def get_makefile(tier: str, project_name: str) -> str:
     """
     Generate complete Makefile for specified tier.
@@ -905,7 +989,7 @@ install: ## Install dependencies from requirements.txt
 # PURPOSE: Check local CI status.
 ci-local: ## Run local CI audit and lint checks
 	@echo "$(BLUE)🔄 Running local CI checks...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/run_audit.py
 	@ruff check . || true
 	@echo "$(GREEN)✅ Local CI complete (Lite tier - no tests)$(NC)"
 
@@ -916,7 +1000,7 @@ doctor: ## Diagnose common issues and check structure
 	@echo "$(BLUE)📦 Checking dependencies...$(NC)"
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/run_audit.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -925,14 +1009,14 @@ doctor: ## Diagnose common issues and check structure
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/session.py start -- "${msg}"
+	@python3 scripts/manage_session.py start -- "${msg}"
 
 # PURPOSE: finalize your work, index it, and sync to GitHub (Lite tier - no quality gates).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
 session-end: ## Close session: indices docs, commits & pushes (optional msg="...")
 	@echo "$(BLUE)📤 Finalizing workspace...$(NC)"
-	@python3 scripts/doc_indexer.py
-	@python3 scripts/audit.py
+	@python3 scripts/index_docs.py
+	@python3 scripts/run_audit.py
 	@make clean
 	@if [ -d .git ]; then \\
 		git add .; \\
@@ -945,7 +1029,7 @@ session-end: ## Close session: indices docs, commits & pushes (optional msg="...
 	else \\
 		echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${msg}"
+	@python3 scripts/manage_session.py end -- "${msg}"
 """
     elif tier == "2":
         return f"""# Gemini Standard Workspace
@@ -1028,7 +1112,7 @@ docs: ## Build static documentation (HTML) if configured with mkdocs
 # PURPOSE: Refresh the master index of all documents.
 index: ## Regenerate the master Table of Contents in README.md
 	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
-	@python3 scripts/doc_indexer.py
+	@python3 scripts/docs/index_docs.py
 
 # ==============================================================================
 # 📦 ENVIRONMENT MANAGEMENT
@@ -1051,7 +1135,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 	@echo "$(BLUE)📦 Checking dependencies...$(NC)"
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/workspace/run_audit.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -1060,7 +1144,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/session.py start -- "${{msg}}"
+	@python3 scripts/workspace/manage_session.py start -- "${{msg}}"
 
 # PURPOSE: finalize your work, runs quality checks, and sync to GitHub (Standard tier).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
@@ -1070,8 +1154,8 @@ session-end: ## Close session: runs lint/tests, commits & pushes (optional msg="
 	@$(MAKE) lint || ( echo "$(RED)❌ Linting failed$(NC)" && exit 1 )
 	@echo "$(BLUE)🧪 Testing...$(NC)"
 	@$(MAKE) test || ( echo "$(RED)❌ Tests failed$(NC)" && exit 1 )
-	@python3 scripts/doc_indexer.py
-	@python3 scripts/audit.py
+	@python3 scripts/docs/index_docs.py
+	@python3 scripts/workspace/run_audit.py
 	@$(MAKE) clean
 	@if [ -d .git ]; then \\
 		git add .; \\
@@ -1084,7 +1168,7 @@ session-end: ## Close session: runs lint/tests, commits & pushes (optional msg="
 	else \\
 			echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${{msg}}"
+	@python3 scripts/workspace/manage_session.py end -- "${{msg}}"
 	@echo "$(GREEN)✅ Quality checks passed!$(NC)"
 
 # ==============================================================================
@@ -1095,12 +1179,12 @@ session-end: ## Close session: runs lint/tests, commits & pushes (optional msg="
 # WHEN: Use before major or risky changes.
 snapshot: ## Create an immutable local backup of your workspace state
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for snapshot$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py create "${{name}}"
+	@python3 scripts/workspace/create_snapshot.py create "${{name}}"
 
 # PURPOSE: Revert to a previous "Save Point".
 restore: ## Revert workspace to a previous snapshot (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for restore$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py restore "${{name}}" $(if $(yes),--yes,)
+	@python3 scripts/workspace/create_snapshot.py restore "${{name}}" $(if $(yes),--yes,)
 
 # PURPOSE: Standard backup.
 backup: snapshot ## Alias for snapshot
@@ -1210,7 +1294,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 	@command -v uv >/dev/null 2>&1 && echo "$(GREEN)✅ uv available$(NC)" || echo "$(YELLOW)⚠️  uv not found (using pip fallback)$(NC)"
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
-	@python3 scripts/audit.py
+	@python3 scripts/shared/run_audit.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -1219,7 +1303,7 @@ doctor: ## Run environmental diagnostics (Python version, dependencies)
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/session.py start -- "${{msg}}"
+	@python3 scripts/shared/manage_session.py start -- "${{msg}}"
 
 # PURPOSE: finalize your work, runs all quality checks, and sync to GitHub (Enterprise tier).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
@@ -1231,8 +1315,8 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes (optional
 	@$(MAKE) test || ( echo "$(RED)❌ Tests failed$(NC)" && exit 1 )
 	@echo "$(BLUE)🧠 Evaluating...$(NC)"
 	@$(MAKE) eval || ( echo "$(RED)❌ Evals failed$(NC)" && exit 1 )
-	@python3 scripts/doc_indexer.py
-	@python3 scripts/audit.py
+	@python3 scripts/shared/index_docs.py
+	@python3 scripts/shared/run_audit.py
 	@$(MAKE) clean
 	@if [ -d .git ]; then \\
 		git add .; \\
@@ -1245,7 +1329,7 @@ session-end: ## Close session: runs lint/tests/evals, commits & pushes (optional
 	else \\
 			echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/session.py end -- "${{msg}}"
+	@python3 scripts/shared/manage_session.py end -- "${{msg}}"
 	@echo "$(GREEN)✅ All quality checks passed!$(NC)"
 
 # ==============================================================================
@@ -1259,12 +1343,12 @@ shift-report: ## Generate handoff report
 # PURPOSE: Enterprise "Save Point".
 snapshot: ## Create an immutable local backup of your workspace state
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for snapshot$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py create "${{name}}"
+	@python3 scripts/shared/create_snapshot.py create "${{name}}"
 
 # PURPOSE: Revert to "Save Point".
 restore: ## Revert workspace to a previous snapshot (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required for restore$(NC)" && exit 1; fi
-	@python3 scripts/snapshot.py restore "${{name}}" $(if $(yes),--yes,)
+	@python3 scripts/shared/create_snapshot.py restore "${{name}}" $(if $(yes),--yes,)
 
 # PURPOSE: Standard backup.
 backup: snapshot ## Alias for snapshot
@@ -1293,12 +1377,6 @@ PYTEST := pytest
 # ==============================================================================
 # 🏥 WORKSPACE HEALTH & LIFECYCLE
 # ==============================================================================
-
-# PURPOSE: Rebuild the master 'README.md' Table of Contents.
-# WHEN: Run this when you've added new documents and want the index updated.
-index: ## Regenerate the master Table of Contents in README.md
-	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
-	@python3 scripts/doc_indexer.py
 
 # PURPOSE: Emergency stop for stale tasks.
 # WHEN: Use this if you forgot to run 'session-end' and things are hung.
@@ -1410,18 +1488,6 @@ clean: ## Clear out temporary files, caches, and scratchpad drafts
 	@echo "$(BLUE)🧹 Cleaning workspace caches...$(NC)"
 	@rm -rf scratchpad/* logs/*.log __pycache__ .pytest_cache
 
-# PURPOSE: Check for code style violations and common programmatic errors.
-# WHEN: Run this to keep your codebase clean and uniform.
-lint: ## Check for code style and logical errors using ruff
-	@echo "$(BLUE)🧹 Linting codebase...$(NC)"
-	@ruff check . --fix
-
-# PURPOSE: Automatically fix indentation and formatting.
-# WHEN: Run this if your code looks "messy" or before sharing it with others.
-format: ## Automatically format code (imports, spacing) with ruff
-	@echo "$(BLUE)✨ Formatting code...$(NC)"
-	@ruff format .
-
 # PURPOSE: Run CI tests locally (mirrors GitHub Actions).
 # WHEN: Run this before pushing to ensuring your code passes all checks.
 ci-local: ## Run CI tests locally (mirrors GitHub Actions)
@@ -1467,6 +1533,7 @@ Template Generation Module
 
 Generates all file templates: GEMINI.md, scripts, schemas, configs.
 """
+
 
 
 
@@ -1637,8 +1704,8 @@ jobs:
 """
         )
 
-def get_audit_script() -> str:
-    """Generate workspace audit script."""
+def get_run_audit_script() -> str:
+    """Generate workspace audit script (run_audit.py)."""
     return (
         '''#!/usr/bin/env python3
 """Workspace structure auditor - validates against Gemini Standard."""
@@ -1676,8 +1743,8 @@ if __name__ == "__main__":
 '''
     )
 
-def get_session_script() -> str:
-    """Generate session management script."""
+def get_manage_session_script() -> str:
+    """Generate session management script (manage_session.py)."""
     return (
         '''#!/usr/bin/env python3
 """Session management for Gemini workspaces."""
@@ -1775,8 +1842,8 @@ if __name__ == "__main__":
     )
 
 
-def get_doc_indexer_script() -> str:
-    """Generate document indexer script."""
+def get_index_docs_script() -> str:
+    """Generate document indexer script (index_docs.py)."""
     return (
         r"""#!/usr/bin/env python3
 import os
@@ -1837,8 +1904,8 @@ if __name__ == "__main__":
 """
     )
 
-def get_status_script() -> str:
-    """Generate workspace status script with health dashboard."""
+def get_check_status_script() -> str:
+    """Generate workspace status script with health dashboard (check_status.py)."""
     return (
         '''#!/usr/bin/env python3
 """Show workspace status with health dashboard."""
@@ -2000,8 +2067,198 @@ if __name__ == "__main__":
 '''
     )
 
-def get_skill_manager_script() -> str:
-    """Generate skill manager script for adding/removing skills."""
+def get_create_snapshot_script() -> str:
+    """Generate snapshot creation/restore script (create_snapshot.py)."""
+    return (
+        '''#!/usr/bin/env python3
+"""Create and restore workspace snapshots using git tags and directory backups."""
+import argparse
+import json
+import shutil
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+SNAPSHOT_DIR = Path(".snapshots")
+
+def get_git_available():
+    """Check if git is available and repo is initialized."""
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True, check=True
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+def list_snapshots():
+    """List all available snapshots."""
+    snapshots = []
+    
+    # Check git tags
+    if get_git_available():
+        try:
+            result = subprocess.run(
+                ["git", "tag", "-l", "snapshot-*"],
+                capture_output=True, text=True, check=True
+            )
+            tags = [line.strip() for line in result.stdout.split("\\\\n") if line.strip()]
+            snapshots.extend([(tag, "git") for tag in tags])
+        except subprocess.CalledProcessError:
+            pass
+    
+    # Check directory backups
+    if SNAPSHOT_DIR.exists():
+        for backup in SNAPSHOT_DIR.iterdir():
+            if backup.is_dir():
+                snapshots.append((backup.name, "backup"))
+    
+    return snapshots
+
+def create_snapshot(name: str):
+    """Create a workspace snapshot."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    snapshot_name = f"snapshot-{name}-{timestamp}" if name else f"snapshot-{timestamp}"
+    
+    print(f"📸 Creating snapshot: {snapshot_name}")
+    
+    # Create git tag if available
+    if get_git_available():
+        try:
+            subprocess.run(
+                ["git", "tag", "-a", snapshot_name, "-m", f"Snapshot: {name or 'unnamed'}"],
+                check=True
+            )
+            print(f"✅ Git tag created: {snapshot_name}")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  Git tag creation failed: {e}")
+    
+    # Create directory backup
+    backup_path = SNAPSHOT_DIR / snapshot_name
+    backup_path.mkdir(parents=True, exist_ok=True)
+    
+    # Backup critical files and directories
+    critical_items = [
+        ".gemini/workspace.json",
+        ".gemini/settings.json", 
+        "GEMINI.md",
+        "Makefile",
+        "pyproject.toml",
+        "src/",
+        ".agent/"
+    ]
+    
+    for item in critical_items:
+        src = Path(item)
+        if not src.exists():
+            continue
+        
+        dest = backup_path / item
+        try:
+            if src.is_dir():
+                shutil.copytree(src, dest, dirs_exist_ok=True)
+            else:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest)
+        except Exception as e:
+            print(f"⚠️  Failed to backup {item}: {e}")
+    
+    # Save snapshot metadata
+    metadata = {
+        "name": name or "unnamed",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "git_tag": snapshot_name if get_git_available() else None
+    }
+    
+    with open(backup_path / "snapshot.json", "w") as f:
+        json.dump(metadata, f, indent=2)
+    
+    print(f"✅ Backup created: {backup_path}")
+    print(f"\\\\n💡 Restore with: make restore name=\\"{snapshot_name}\\"")
+
+def restore_snapshot(name: str):
+    """Restore workspace from a snapshot."""
+    # Find snapshot
+    snapshots = list_snapshots()
+    matching = [s for s in snapshots if name in s[0]]
+    
+    if not matching:
+        print(f"❌ Snapshot '{name}' not found")
+        print("\\\\nAvailable snapshots:")
+        for snap_name, snap_type in snapshots:
+            print(f"  • {snap_name} ({snap_type})")
+        sys.exit(1)
+    
+    snapshot_name = matching[0][0]
+    print(f"🔄 Restoring snapshot: {snapshot_name}")
+    
+    # Confirm
+    confirm = input("⚠️  This will overwrite current files. Continue? [y/N]: ").strip().lower()
+    if confirm != "y":
+        print("❌ Restore cancelled")
+        sys.exit(0)
+    
+    # Restore from directory backup
+    backup_path = SNAPSHOT_DIR / snapshot_name
+    if not backup_path.exists():
+        print(f"❌ Backup directory not found: {backup_path}")
+        sys.exit(1)
+    
+    # Restore files
+    restored_count = 0
+    for item in backup_path.rglob("*"):
+        if item.is_file() and item.name != "snapshot.json":
+            rel_path = item.relative_to(backup_path)
+            dest = Path(rel_path)
+            
+            try:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(item, dest)
+                restored_count += 1
+            except Exception as e:
+                print(f"⚠️  Failed to restore {rel_path}: {e}")
+    
+    print(f"✅ Restored {restored_count} files from {snapshot_name}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Workspace Snapshot Manager")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    
+    # Create command
+    create_parser = subparsers.add_parser("create", help="Create a snapshot")
+    create_parser.add_argument("name", nargs="?", default="", help="Snapshot name")
+    
+    # Restore command
+    restore_parser = subparsers.add_parser("restore", help="Restore from snapshot")
+    restore_parser.add_argument("name", help="Snapshot name (or partial match)")
+    
+    # List command
+    list_parser = subparsers.add_parser("list", help="List available snapshots")
+    
+    args = parser.parse_args()
+    
+    if args.command == "create":
+        create_snapshot(args.name)
+    elif args.command == "restore":
+        restore_snapshot(args.name)
+    elif args.command == "list":
+        snapshots = list_snapshots()
+        if snapshots:
+            print("Available snapshots:")
+            for snap_name, snap_type in snapshots:
+                print(f"  • {snap_name} ({snap_type})")
+        else:
+            print("No snapshots found")
+
+if __name__ == "__main__":
+    main()
+'''
+    )
+
+def get_manage_skills_script() -> str:
+    """Generate skill manager script for adding/removing skills (manage_skills.py)."""
     lines = [
         '#!/usr/bin/env python3',
         '"""Skill Manager - Install and remove Agent Skills."""',
@@ -2112,8 +2369,8 @@ def get_skill_manager_script() -> str:
     ]
     return "\n".join(lines)
 
-def get_skill_explorer_script() -> str:
-    """Generate skill explorer script for discovering skills from GitHub."""
+def get_explore_skills_script() -> str:
+    """Generate skill explorer script for discovering skills from GitHub (explore_skills.py)."""
     lines = [
         '#!/usr/bin/env python3',
         '"""Skill Explorer - Discover and install capabilities from community repositories."""',
@@ -2974,6 +3231,12 @@ Handles workspace creation, validation, and upgrades.
 
 
 
+
+
+
+
+
+
 def create_workspace(
     tier: str,
     name: str,
@@ -3404,10 +3667,10 @@ def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = Fal
             )
 
         if not (base / ".agent/skills/debug.md").exists():
-            (base / ".agent/skills/debug.md").write_text(SKILL_DEBUG)
+            (base / ".agent/skills/debug.md").write_text("# Debug Skill\n\nDebug protocol skill.")
 
         if not (base / ".agent/workflows/feature.md").exists():
-            (base / ".agent/workflows/feature.md").write_text(WORKFLOW_FEATURE)
+            (base / ".agent/workflows/feature.md").write_text("# Feature Workflow\n\nFeature implementation workflow.")
 
         # Clean up Lite tier artifacts
         if (base / "requirements.txt").exists():
@@ -3668,12 +3931,67 @@ def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = Fa
 # --- EXPORT WORKSPACE AS TEMPLATE ---
 # --- INTERNAL HELPER FUNCTIONS ---
 
+def _get_script_path(tier: str, script_name: str) -> str:
+    """Get tier-specific path for a script.
+    
+    Args:
+        tier: Workspace tier ("1", "2", or "3")
+        script_name: Script name without extension (e.g., "run_audit")
+        
+    Returns:
+        Full path relative to workspace root (e.g., "scripts/workspace/run_audit.py")
+    """
+    if tier == "1":  # Lite: flat structure
+        return f"scripts/{script_name}.py"
+    elif tier == "2":  # Standard: categorized
+        # Find which category this script belongs to
+        for category, scripts in SCRIPT_CATEGORIES["2"].items():
+            if script_name in scripts:
+                return f"scripts/{category}/{script_name}.py"
+        # Fallback
+        return f"scripts/{script_name}.py"
+    else:  # Enterprise: domain-based
+        # Default to shared for standard scripts
+        for category, scripts in SCRIPT_CATEGORIES["3"].items():
+            if script_name in scripts:
+                return f"scripts/{category}/{script_name}.py"
+        # Fallback
+        return f"scripts/shared/{script_name}.py"
+
 def _build_workspace_directories(tier: str, pkg_name: str) -> List[str]:
     """Build list of directories to create."""
-    dirs = get_all_directories(tier)
+    dirs = get_all_directories(tier).copy()
+    
+    # Add script category directories based on tier
+    if tier == "2":  # Standard: categorized structure
+        for category in SCRIPT_CATEGORIES["2"].keys():
+            if category:  # Skip empty key (flat dirs)
+                dirs.append(f"scripts/{category}")
+    elif tier == "3":  # Enterprise: domain-based structure
+        for category in SCRIPT_CATEGORIES["3"].keys():
+            if category:  # Skip empty key
+                dirs.append(f"scripts/{category}")
+    
+    # Add data directories based on tier (Tiered Data Pattern)
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        dirs.extend([
+            "data/inputs",
+            "data/outputs"
+        ])
+    else:  # Enterprise: domain-based data structure  
+        # TODO: Implement domain prompting for Enterprise
+        domain = "core"  # Default for now
+        dirs.extend([
+            f"data/{domain}/inputs",
+            f"data/{domain}/outputs",
+            "data/shared"
+        ])
+    
     if tier != "1":
         dirs.append(f"src/{pkg_name}")
+    
     return sorted(list(set(dirs)))
+
 
 def _build_workspace_files(
     tier: str,
@@ -3691,7 +4009,7 @@ def _build_workspace_files(
     files["GEMINI.md"] = get_gemini_md(tier, pkg_name)
     files["Makefile"] = get_makefile(tier, pkg_name)
     files["README.md"] = f"# {name}\n\nGenerated Gemini Workspace ({TIERS[tier]['name']})\n"
-    files[".gitignore"] = "\n".join(GITIGNORE_PATTERNS)
+    files[".gitignore"] = "\n".join(get_gitignore_for_tier(tier))
     
     # Configuration
     files[".gemini/workspace.json"] = json.dumps({
@@ -3703,17 +4021,22 @@ def _build_workspace_files(
         "parent_workspace": parent
     }, indent=2)
     
-    # Scripts
-    files["scripts/audit.py"] = get_audit_script()
-    files["scripts/session.py"] = get_session_script()
-    files["scripts/doc_indexer.py"] = get_doc_indexer_script()
-    files["scripts/status.py"] = get_status_script()
-    files["scripts/list_skills.py"] = get_list_skills_script()
-    files["scripts/skill_manager.py"] = get_skill_manager_script()
+    
+    # Scripts - use tier-specific paths
+    files[_get_script_path(tier, "run_audit")] = get_run_audit_script()
+    files[_get_script_path(tier, "manage_session")] = get_manage_session_script()
+    files[_get_script_path(tier, "index_docs")] = get_index_docs_script()
+    files[_get_script_path(tier, "check_status")] = get_check_status_script()
+    files[_get_script_path(tier, "list_skills")] = get_list_skills_script()
+    files[_get_script_path(tier, "manage_skills")] = get_manage_skills_script()
+    
+    # Snapshot script for Standard and Enterprise tiers
+    if tier in ["2", "3"]:
+        files[_get_script_path(tier, "create_snapshot")] = get_create_snapshot_script()
     
     # Discovery (Standard & Enterprise only)
     if tier != "1":
-        files["scripts/skill_explorer.py"] = get_skill_explorer_script()
+        files[_get_script_path(tier, "explore_skills")] = get_explore_skills_script()
         files[".agent/workflows/discover_skills.md"] = get_skill_discovery_workflow()
     
     # Documentation
@@ -3744,6 +4067,18 @@ if __name__ == "__main__":
     else:
         files["src/main.py"] = 'print("Hello World")'
         files["requirements.txt"] = "\n".join(DEFAULT_REQUIREMENTS["1"])
+    
+    # Add .gitkeep files for hygiene and data directories
+    files["logs/.gitkeep"] = ""
+    files["scratchpad/.gitkeep"] = ""
+    
+    # Add .gitkeep for data directories based on tier
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        files["data/inputs/.gitkeep"] = ""
+    else:  # Enterprise: domain-based data structure
+        domain = "core"  # Match domain from _build_workspace_directories
+        files[f"data/{domain}/inputs/.gitkeep"] = ""
+        files["data/shared/.gitkeep"] = ""
         
     return files
 

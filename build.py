@@ -41,9 +41,13 @@ def read_module(path: Path) -> Tuple[str, List[str], str]:
     code_lines = []
     in_docstring = False
     docstring_marker = None
+    in_multiline_import = False
+    skip_multiline_import = False
     
-    for line in lines:
-        # Track docstrings
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
         # Track docstrings/strings
         stripped = line.strip()
         is_string_start = False
@@ -51,8 +55,8 @@ def read_module(path: Path) -> Tuple[str, List[str], str]:
         
         # Check for string start with prefixes
         for prefix in ['', 'f', 'r', 'fr', 'rf', 'b']:
-            if stripped.startswith(f"{prefix}'''"):
-                marker = "'''"
+            if stripped.startswith(f"{prefix}\'\'\'"):
+                marker = "\'\'\'"
                 is_string_start = True
                 break
             elif stripped.startswith(f'{prefix}"""'):
@@ -66,8 +70,7 @@ def read_module(path: Path) -> Tuple[str, List[str], str]:
                 docstring_marker = marker
                 code_lines.append(line)
                 # Check if it closes on the same line
-                # Must end with marker, and be longer than just the start sequence
-                start_seq = line.strip().split(marker)[0] + marker # crude approx but handles prefix
+                start_seq = line.strip().split(marker)[0] + marker
                 if len(stripped) > len(start_seq) and stripped.endswith(marker):
                      in_docstring = False
                      docstring_marker = None
@@ -77,35 +80,75 @@ def read_module(path: Path) -> Tuple[str, List[str], str]:
                 code_lines.append(line)
             else:
                 code_lines.append(line)
+            i += 1
             continue
         
         if in_docstring:
             code_lines.append(line)
+            i += 1
             continue
         
         # Skip shebang and encoding declarations
         if line.startswith("#!") or line.startswith("# -*-"):
+            i += 1
             continue
         
-        # Collect imports
+        # Handle import statements
         if line.startswith("import ") or line.startswith("from "):
-            # Check if it's an internal import (from bootstrap_src)
-            if "from bootstrap_src" in line or line.startswith("from ."):
-                continue  # Skip internal imports
+            # Check if it's an internal import
+            is_internal = (
+                "from config" in line or
+                "from core" in line or
+                "from content_generators" in line or
+                "from operations" in line or
+                "from providers" in line or
+                "from bootstrap_src" in line or
+                line.startswith("from .")
+            )
             
-            imports.append(line)
-            
-            # Track external library imports
-            if line.startswith("import "):
-                lib = line.replace("import ", "").split()[0].split(".")[0]
-                if lib not in ["bootstrap_src"] and lib not in external_imports:
-                    external_imports.append(lib)
-            elif line.startswith("from "):
-                lib = line.split("from ")[1].split()[0].split(".")[0]
-                if lib not in ["bootstrap_src"] and lib not in external_imports:
-                    external_imports.append(lib)
+            # Check if multi-line import
+            if "(" in line and ")" not in line:
+                # Multi-line import
+                if is_internal:
+                    # Skip the entire block
+                    while i < len(lines) - 1:
+                        i += 1
+                        if ")" in lines[i]:
+                            break
+                else:
+                    # Keep the entire block
+                    import_block = [line]
+                    while i < len(lines) - 1 and ")" not in lines[i]:
+                        i += 1
+                        import_block.append(lines[i])
+                    imports.append("\n".join(import_block))
+                    
+                    # Extract library name
+                    first_line = line
+                    if first_line.startswith("from "):
+                        lib = first_line.split("from ")[1].split()[0].split(".")[0]
+                        if lib not in external_imports:
+                            external_imports.append(lib)
+            elif is_internal:
+                # Single-line internal import, skip
+                pass
+            else:
+                # Single-line external import, keep
+                imports.append(line)
+                
+                # Track external library imports
+                if line.startswith("import "):
+                    lib = line.replace("import ", "").split()[0].split(".")[0]
+                    if lib not in external_imports:
+                        external_imports.append(lib)
+                elif line.startswith("from "):
+                    lib = line.split("from ")[1].split()[0].split(".")[0]
+                    if lib not in external_imports:
+                        external_imports.append(lib)
         else:
             code_lines.append(line)
+        
+        i += 1
     
     return "\n".join(imports), external_imports, "\n".join(code_lines)
 
