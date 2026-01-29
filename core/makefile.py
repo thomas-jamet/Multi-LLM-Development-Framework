@@ -36,7 +36,7 @@ def get_makefile(tier: str, project_name: str) -> str:
     Returns:
         Complete Makefile content
     """
-    return _get_makefile_tier_targets(tier, project_name) + _get_makefile_common_targets()
+    return _get_makefile_tier_targets(tier, project_name) + _get_makefile_common_targets(tier)
 
 
 def _get_makefile_tier_targets(tier: str, project_name: str) -> str:
@@ -465,8 +465,17 @@ backup: snapshot ## Alias for snapshot
 """
 
 
-def _get_makefile_common_targets() -> str:
+def _get_makefile_common_targets(tier: str = "1") -> str:
     """Generate common Makefile targets shared across all tiers."""
+    # Build tier-specific script paths
+    sp_audit = _script_path(tier, "run_audit")
+    sp_session = _script_path(tier, "manage_session")
+    sp_status = _script_path(tier, "show_status")
+    sp_list_skills = _script_path(tier, "list_skills")
+    sp_skill_manager = _script_path(tier, "skill_manager")
+    sp_skill_explorer = _script_path(tier, "skill_explorer")
+    
+    # Use string concatenation to avoid f-string backslash issues
     return """
 # ==============================================================================
 # ⚙️ SYSTEM CONFIGURATION
@@ -491,7 +500,7 @@ PYTEST := pytest
 # PURPOSE: Emergency stop for stale tasks.
 # WHEN: Use this if you forgot to run 'session-end' and things are hung.
 session-force-end-all: ## Emergency: force-close any stale or hung sessions
-	@python3 scripts/session.py force-end-all
+	@python3 """ + sp_session + """ force-end-all
 
 # PURPOSE: The "Start My Day" command.
 # WHEN: Run this as your very first action in a new work day.
@@ -505,7 +514,7 @@ init: ## Quickstart: starts a session and exports LLM context manifest
 onboard: ## First-run experience: runs status, audit, and diagnostic check
 	@echo "\\n🚀 Welcome to your Gemini Workspace!"
 	@echo "─────────────────────────────────────"
-	@python3 scripts/status.py
+	@python3 """ + sp_status + """
 	@echo "📋 Running health check..."
 	@make doctor
 	@echo "\\n📚 Quick Start:"
@@ -518,29 +527,29 @@ onboard: ## First-run experience: runs status, audit, and diagnostic check
 # PURPOSE: Checks that your folders follow the required AI standard.
 # WHEN: I run this automatically for you, but you can run it to check health.
 audit: ## Validate that workspace structure complies with the standard
-	@python3 scripts/audit.py
+	@python3 """ + sp_audit + """
 
 # PURPOSE: See what special "AI Capabilities" I have in this folder.
 # WHEN: Use this to discover new workflows or skills I can perform.
 list-skills: ## List the cognitive 'Skills' and 'Workflows' available to agents
 	@echo "$(BLUE)🧠 Querying AI capabilities...$(NC)"
-	@python3 scripts/list_skills.py
+	@python3 """ + sp_list_skills + """
 
 # PURPOSE: Install a new AI capability from a trusted source.
 # WHEN: Use this when you need a specialized skill for a specific task.
 skill-add: ## Fetch and install a skill (use source="owner/repo/path")
 	@if [ -z "$(source)" ]; then echo "$(RED)❌ Error: source=\\"...\\" is required$(NC)" && exit 1; fi
-	@$(PYTHON) scripts/skill_manager.py fetch "$(source)"
+	@$(PYTHON) """ + sp_skill_manager + """ fetch "$(source)"
 
 # PURPOSE: Remove an AI capability you no longer need.
 skill-remove: ## Uninstall a local skill (use name="...")
 	@if [ -z "$(name)" ]; then echo "$(RED)❌ Error: name=\\"...\\" is required$(NC)" && exit 1; fi
-	@$(PYTHON) scripts/skill_manager.py remove "$(name)"
+	@$(PYTHON) """ + sp_skill_manager + """ remove "$(name)"
 
 # PURPOSE: View your current "Health Score" and workspace status.
 # WHEN: Use this to see how much progress you've made today.
 status: ## Show a high-level health dashboard and git/session status
-	@python3 scripts/status.py
+	@python3 """ + sp_status + """
 
 # PURPOSE: Standard health check (alias for doctor).
 health: doctor ## Alias for doctor
@@ -581,7 +590,7 @@ search: ## Search codebase for q="term"
 
 # PURPOSE: Discover new skills from external repositories.
 discover: ## Discover external skills (q="topic")
-	@python3 scripts/skill_explorer.py search "$(q)"
+	@python3 """ + sp_skill_explorer + """ search "$(q)"
 
 # PURPOSE: List all TODOs and FIXMEs in the codebase.
 list-todos: ## List all 'TODO' and 'FIXME' tags in the code
@@ -603,7 +612,7 @@ clean: ## Clear out temporary files, caches, and scratchpad drafts
 ci-local: ## Run CI tests locally (mirrors GitHub Actions)
 	@echo "$(BLUE)🔄 Running local CI checks...$(NC)"
 	@echo "📋 Step 1: Audit"
-	@python3 scripts/audit.py
+	@python3 """ + sp_audit + """
 	@echo "📋 Step 2: Lint"
 	@ruff check . || true
 	@echo "📋 Step 3: Test"
