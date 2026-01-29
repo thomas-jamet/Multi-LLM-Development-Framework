@@ -62,15 +62,46 @@ TIER_SPECIFIC_DIRECTORIES = {
     ]
 }
 
-# File Permissions
+# Script Organization Patterns
+# Maps tier -> category -> list of script names (without .py extension)
+SCRIPT_CATEGORIES = {
+    "1": {  # Lite: flat structure in scripts/
+        "": ["run_audit", "manage_session", "check_status", "index_docs", 
+             "list_skills", "manage_skills", "explore_skills"]
+    },
+    "2": {  # Standard: functional categories
+        "workspace": ["run_audit", "manage_session", "check_status", "create_snapshot"],
+        "skills": ["list_skills", "manage_skills", "explore_skills"],
+        "docs": ["index_docs"]
+    },
+    "3": {  # Enterprise: domain-based (shared is default)
+        "shared": ["run_audit", "manage_session", "check_status", "create_snapshot"]
+    }
+}
+
+# Standard script verbs for verb_noun.py naming convention
+SCRIPT_VERBS = [
+    "run",      # Execute processes (audit, tests)
+    "check",    # Inspections (status, health)
+    "manage",   # CRUD operations (session, config, skills)
+    "generate", # Create artifacts (reports, docs)
+    "sync",     # Data synchronization
+    "index",    # Build search indices
+    "list",     # Display collections
+    "create",   # Create new items (snapshots)
+    "explore"   # Discovery/exploration (skills)
+]
+
+# File Permissions (Standard tier paths as reference)
 EXECUTABLE_FILES = [
-    "scripts/audit.py",
-    "scripts/session.py",
-    "scripts/doc_indexer.py",
-    "scripts/status.py",
-    "scripts/list_skills.py",
-    "scripts/skill_manager.py",
-    "scripts/skill_explorer.py"
+    "scripts/workspace/run_audit.py",
+    "scripts/workspace/manage_session.py",
+    "scripts/workspace/check_status.py",
+    "scripts/workspace/create_snapshot.py",
+    "scripts/docs/index_docs.py",
+    "scripts/skills/list_skills.py",
+    "scripts/skills/manage_skills.py",
+    "scripts/skills/explore_skills.py"
 ]
 
 # Color Codes for Terminal Output
@@ -239,6 +270,38 @@ def get_tier_name(tier: str) -> str:
 def get_phony_targets(tier: str) -> List[str]:
     """Get .PHONY targets for a tier."""
     return PHONY_TARGETS.get(tier, PHONY_TARGETS["1"])
+
+
+def get_gitignore_for_tier(tier: str) -> List[str]:
+    """Get complete .gitignore patterns for a tier including data directories.
+    
+    Args:
+        tier: Workspace tier ("1" for Lite, "2" for Standard, "3" for Enterprise)
+        
+    Returns:
+        Complete list of gitignore patterns
+    """
+    patterns = GITIGNORE_PATTERNS.copy()
+    
+    # Add tier-specific data patterns
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        patterns.extend([
+            "",
+            "# Data (Lite/Standard tier pattern)",
+            "data/inputs/*",
+            "!data/inputs/.gitkeep",
+            "data/outputs/*"
+        ])
+    else:  # Enterprise: domain-based data structure
+        patterns.extend([
+            "",
+            "# Data (Enterprise tier pattern)",
+            "data/*/inputs/*",
+            "data/*/outputs/*",
+            "!data/*/.gitkeep"
+        ])
+    
+    return patterns
 
 
 # Tier Metadata

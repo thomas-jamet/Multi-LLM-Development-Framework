@@ -470,12 +470,6 @@ PYTEST := pytest
 # 🏥 WORKSPACE HEALTH & LIFECYCLE
 # ==============================================================================
 
-# PURPOSE: Rebuild the master 'README.md' Table of Contents.
-# WHEN: Run this when you've added new documents and want the index updated.
-index: ## Regenerate the master Table of Contents in README.md
-	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
-	@python3 scripts/doc_indexer.py
-
 # PURPOSE: Emergency stop for stale tasks.
 # WHEN: Use this if you forgot to run 'session-end' and things are hung.
 session-force-end-all: ## Emergency: force-close any stale or hung sessions
@@ -585,18 +579,6 @@ list-todos: ## List all 'TODO' and 'FIXME' tags in the code
 clean: ## Clear out temporary files, caches, and scratchpad drafts
 	@echo "$(BLUE)🧹 Cleaning workspace caches...$(NC)"
 	@rm -rf scratchpad/* logs/*.log __pycache__ .pytest_cache
-
-# PURPOSE: Check for code style violations and common programmatic errors.
-# WHEN: Run this to keep your codebase clean and uniform.
-lint: ## Check for code style and logical errors using ruff
-	@echo "$(BLUE)🧹 Linting codebase...$(NC)"
-	@ruff check . --fix
-
-# PURPOSE: Automatically fix indentation and formatting.
-# WHEN: Run this if your code looks "messy" or before sharing it with others.
-format: ## Automatically format code (imports, spacing) with ruff
-	@echo "$(BLUE)✨ Formatting code...$(NC)"
-	@ruff format .
 
 # PURPOSE: Run CI tests locally (mirrors GitHub Actions).
 # WHEN: Run this before pushing to ensuring your code passes all checks.
