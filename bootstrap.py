@@ -19,7 +19,7 @@ Features:
 
 Build Information:
     Version: 2026.26
-    Built: 2026-01-29 10:21:50 UTC
+    Built: 2026-01-29 10:35:32 UTC
     Source: Modular architecture (bootstrap_src/)
 
 This file is AUTO-GENERATED from modular source.
@@ -1535,20 +1535,62 @@ backup: snapshot ## Alias for snapshot
 """
 
 # ==============================================================================
-# Module: core/templates.py
+# Module: core/templates/__init__.py
 # ==============================================================================
 
 """
-Template Generation Module
+Template Generation Package
 
-Generates all file templates: GEMINI.md, scripts, schemas, configs.
+Exports all template generator functions for workspace creation.
+Organized into logical modules:
+- gemini_md: GEMINI.md constitution
+- github_workflow: CI/CD workflows
+- scripts_core: audit, session, docs, status
+- scripts_snapshot: snapshot/restore functionality
+- scripts_skills: skill management tools
+- schemas: JSON schemas for validation
+- configs: pre-commit and other configs
 """
 
 
+__all__ = [
+    # GEMINI.md
+    "get_gemini_md",
+    # GitHub
+    "get_github_workflow",
+    # Core scripts
+    "get_run_audit_script",
+    "get_manage_session_script",
+    "get_index_docs_script",
+    "get_check_status_script",
+    # Snapshot
+    "get_create_snapshot_script",
+    # Skills
+    "get_manage_skills_script",
+    "get_explore_skills_script",
+    "get_skill_discovery_workflow",
+    "get_list_skills_script",
+    # Schemas
+    "get_workspace_schema",
+    "get_settings_schema",
+    "get_bootstrap_config_schema",
+    # Configs
+    "get_precommit_config",
+]
 
+# ==============================================================================
+# Module: core/templates/gemini_md.py
+# ==============================================================================
+
+"""
+GEMINI.md Constitution Template Generator
+
+Generates tier-specific GEMINI.md constitution files.
+"""
 
 # Version constant (imported from config in final build)
 VERSION = "2026.26"
+
 
 def get_gemini_md(tier: str, project_name: str) -> str:
     """Generate GEMINI.md constitution."""
@@ -1600,6 +1642,18 @@ def get_gemini_md(tier: str, project_name: str) -> str:
             )
             + f"\n## 3. Architecture\n* **Domains:** `src/{project_name}/domains/` (Strict Isolation)\n* **Contracts:** `outputs/contracts/`\n* **Evals:** `tests/evals/`\n\n## 4. Multi-Agent Protocol\n* Sub-Agents do NOT inherit Root Context.\n* Use `make shift-report` for handoffs.\n* Run `make snapshot` before major changes."
         )
+
+# ==============================================================================
+# Module: core/templates/github_workflow.py
+# ==============================================================================
+
+"""
+GitHub Workflow Template Generator
+
+Generates tier-specific GitHub Actions CI workflows.
+"""
+
+
 
 def get_github_workflow(tier: str, python_version: str = DEFAULT_PYTHON_VERSION) -> str:
     """Generate GitHub Actions CI workflow with caching and optional matrix testing.
@@ -1714,6 +1768,14 @@ jobs:
 """
         )
 
+# ==============================================================================
+# Module: core/templates/scripts_core.py
+# ==============================================================================
+
+"""Core Script Generators
+
+Generates workspace audit, session management, document indexing, and status scripts.
+"""
 def get_run_audit_script() -> str:
     """Generate workspace audit script (run_audit.py)."""
     return (
@@ -2077,6 +2139,14 @@ if __name__ == "__main__":
 '''
     )
 
+# ==============================================================================
+# Module: core/templates/scripts_snapshot.py
+# ==============================================================================
+
+"""Snapshot Script Generator
+
+Generates workspace snapshot creation and restore script.
+"""
 def get_create_snapshot_script() -> str:
     """Generate snapshot creation/restore script (create_snapshot.py)."""
     return (
@@ -2267,6 +2337,14 @@ if __name__ == "__main__":
 '''
     )
 
+# ==============================================================================
+# Module: core/templates/scripts_skills.py
+# ==============================================================================
+
+"""Skill Management Script Generators
+
+Generates skill manager, explorer, discovery workflow, and list scripts.
+"""
 def get_manage_skills_script() -> str:
     """Generate skill manager script for adding/removing skills (manage_skills.py)."""
     lines = [
@@ -2646,6 +2724,18 @@ if __name__ == "__main__":
 '''
     )
 
+# ==============================================================================
+# Module: core/templates/schemas.py
+# ==============================================================================
+
+"""
+JSON Schema Template Generators
+
+Generates JSON schemas for workspace validation and IDE autocomplete.
+"""
+
+
+
 def get_workspace_schema() -> str:
     """Generate JSON schema for workspace.json validation and IDE autocomplete."""
     return json.dumps(
@@ -2796,6 +2886,17 @@ def get_bootstrap_config_schema() -> str:
         },
         indent=2,
     )
+
+# ==============================================================================
+# Module: core/templates/configs.py
+# ==============================================================================
+
+"""
+Configuration File Template Generators
+
+Generates pre-commit and other config file templates.
+"""
+
 
 def get_precommit_config() -> str:
     """Generate .pre-commit-config.yaml template."""

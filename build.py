@@ -157,20 +157,28 @@ def build_bootstrap():
     """Main build process."""
     print("🔨 Building bootstrap.py from modular source...")
     
-    # Define module order (dependencies first)
+    # Module order (determines concatenation order, respecting dependencies)
     module_order = [
-        Path("config.py"),                # Constants and config
-        Path("core.py"),                  # Exceptions, utilities, validators
-        Path("providers/base.py"),        # Provider interface
-        Path("core/makefile.py"),         # Makefile generation
-        Path("core/templates.py"),        # Template generation
-        Path("content_generators.py"),    # Content generators
-        Path("operations/create.py"),     # Workspace operations
-        Path("__main__.py"),              #CLI and main entry point
+        "config.py",
+        "core.py",
+        "providers/base.py",
+        "core/makefile.py",
+        "core/templates/__init__.py",
+        "core/templates/gemini_md.py",
+        "core/templates/github_workflow.py",
+        "core/templates/scripts_core.py",
+        "core/templates/scripts_snapshot.py",
+        "core/templates/scripts_skills.py",
+        "core/templates/schemas.py",
+        "core/templates/configs.py",
+        "content_generators.py",
+        "operations/create.py",
+        "__main__.py",
     ]
     
     # Check all modules exist
-    for module_path in module_order:
+    for module_path_str in module_order:
+        module_path = Path(module_path_str)
         if not module_path.exists():
             print(f"❌ Missing module: {module_path}")
             return 1
@@ -179,14 +187,19 @@ def build_bootstrap():
     all_imports = []
     all_external_libs = set()
     all_code = []
+    build_log = [] # Initialize build_log
     
     print("\n📦 Processing modules:")
-    for module_path in module_order:
+    for idx, module_str in enumerate(module_order, 1):
+        module_path = Path(module_str)
+        
         print(f"   - {module_path}")
         imports, ext_libs, code = read_module(module_path)
         
         if imports:
             all_imports.append(imports)
+        
+        # Track external libraries
         all_external_libs.update(ext_libs)
         
         # Add module separator comment
@@ -194,7 +207,15 @@ def build_bootstrap():
         all_code.append(f"\n# {'=' * 78}")
         all_code.append(f"# Module: {module_name}")
         all_code.append(f"# {'=' * 78}\n")
+        
+        # Add code to collection
         all_code.append(code)
+        
+        # Print status
+        stats_path = module_path.relative_to(SOURCE_DIR)
+        size = module_path.stat().st_size
+        lines = len(code.splitlines())
+        build_log.append(f"   {idx}. {stats_path}: {lines} lines ({size} bytes)")
     
     # Build final file
     build_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -259,11 +280,13 @@ Edit files in bootstrap_src/ and rebuild with: python bootstrap_src/build.py
     print(f"   External libraries: {', '.join(sorted(all_external_libs)) if all_external_libs else 'none'}")
     
     # Summary
-    print("\n📊 Build Summary:")
-    for i, module_path in enumerate(module_order, 1):
+    print(f"\n📊 Build Summary:")
+    for idx, module_str in enumerate(module_order, 1):
+        module_path = Path(module_str)
+        stats_path = module_path.relative_to(SOURCE_DIR)
         size = module_path.stat().st_size
         lines = len(module_path.read_text().splitlines())
-        print(f"   {i}. {module_path}: {lines} lines ({size} bytes)")
+        print(f"   {idx}. {stats_path}: {lines} lines ({size} bytes)")
     
     print(f"\n🎉 Build complete! Run with: python {OUTPUT_FILE}")
     return 0
