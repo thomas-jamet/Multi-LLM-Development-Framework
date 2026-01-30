@@ -102,8 +102,8 @@ To add a new module:
 
 ## 💬 Questions & Contact
 
-- **Questions/Discussions**: [GitHub Discussions](https://github.com/thomas-jamet/source-workspace/discussions) (enable after making public)
-- **Bugs/Features**: [GitHub Issues](https://github.com/thomas-jamet/source-workspace/issues)
+- **Questions/Discussions**: [GitHub Discussions](https://github.com/thomas-jamet/gemini-workspace-framework/discussions) (enable after making public)
+- **Bugs/Features**: [GitHub Issues](https://github.com/thomas-jamet/gemini-workspace-framework/issues)
 - **Professional contact**: [LinkedIn](https://www.linkedin.com/in/jamet/)
 
 ---

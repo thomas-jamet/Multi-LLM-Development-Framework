@@ -18,8 +18,8 @@ Get started with the Gemini Native Workspace Framework in 5 minutes.
 
 ```bash
 # Clone the repository
-git clone https://github.com/thomas-jamet/source-workspace.git
-cd source-workspace
+git clone https://github.com/thomas-jamet/gemini-workspace-framework.git
+cd gemini-workspace-framework
 
 # The bootstrap script is ready to use
 ./bootstrap.py --version

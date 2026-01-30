@@ -11,7 +11,7 @@ This document provides guidelines for developing and maintaining the modular sou
 ### 1. Build the Script
 
 ```bash
-cd source-workspace  # Or wherever you cloned this repository
+cd gemini-workspace-framework  # Or wherever you cloned this repository
 make build
 ```
 
@@ -292,7 +292,7 @@ Current status: 5/8 modules under 500 lines ✅
 ## Directory Structure
 
 ```
-source-workspace/
+gemini-workspace-framework/
 ├── README.md              # Project overview
 ├── CONTRIBUTING.md        # This file
 ├── Makefile               # Build automation
