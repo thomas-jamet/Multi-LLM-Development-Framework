@@ -1,3 +1,27 @@
+[project]
+name = "gemini-workspace-framework"
+version = "1.0.0"
+description = "A modular, maintainable framework for building AI-assisted workspaces"
+authors = [{name = "Thomas Jamet", email = ""}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["ai", "workspace", "framework", "automation", "gemini"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+[project.urls]
+Homepage = "https://github.com/thomas-jamet/source-workspace"
+Documentation = "https://github.com/thomas-jamet/source-workspace/blob/main/docs/quickstart.md"
+Repository = "https://github.com/thomas-jamet/source-workspace"
+Issues = "https://github.com/thomas-jamet/source-workspace/issues"
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
