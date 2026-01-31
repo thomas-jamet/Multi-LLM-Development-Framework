@@ -185,7 +185,7 @@ Skills provide AI agents with specialized knowledge for specific tasks.
 ### Learn More
 
 - [Workspace Standard](WORKSPACE_STANDARD.md) - Complete specification
-- [Framework Philosophy](docs/philosophy/framework_rationale.md) - Why this approach
+- [Framework README](../README.md) - Why this approach and core principles
 - [Development Guide](docs/development.md) - Contributing patterns
 - [Contributing](CONTRIBUTING.md) - How to contribute
 
@@ -285,7 +285,7 @@ rm -rf ../my-project
 - **Documentation**: Check `docs/` directory
 - **Examples**: See `WORKSPACE_STANDARD.md` patterns
 - **Issues**: GitHub issues for bugs/features
-- **Philosophy**: Read `docs/philosophy/framework_rationale.md` to understand why this approach
+- **Philosophy**: See the [README](../README.md) to understand why this approach
 
 ---
 
@@ -303,7 +303,7 @@ rm -rf ../my-project
 - Reusable patterns
 - Sustainable long-term
 
-Read the [philosophy document](docs/philosophy/framework_rationale.md) to understand the deeper rationale.
+See the [README](../README.md) for the deeper rationale behind this framework.
 
 ---
 
