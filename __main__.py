@@ -145,13 +145,14 @@ def main():
 
 def _main_impl():
     parser = argparse.ArgumentParser(
-        description=f"Gemini Native Workspace Bootstrap v{VERSION}",
+        description=f"Multi-LLM Development Framework v{VERSION}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
   python bootstrap.py                            Interactive mode
   python bootstrap.py -t 2 -n myapp              Create Standard workspace
   python bootstrap.py -t 3 -n platform --git     Create with git init
   python bootstrap.py -t 2 -n myapp --force -v   Overwrite with verbose output
+  python bootstrap.py -t 2 -n myapp --provider claude   Use Claude provider
   python bootstrap.py --from-template fastapi -n myapi  Use template
   python bootstrap.py --list-templates           Show available templates
   python bootstrap.py --validate ./myapp         Validate existing workspace
@@ -174,7 +175,7 @@ After creation:
         help="Tier: 1=Lite, 2=Standard, 3=Enterprise",
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"Gemini Bootstrap v{VERSION}"
+        "-V", "--version", action="version", version=f"Multi-LLM Dev Framework v{VERSION}"
     )
     parser.add_argument("-n", "--name", help="Project name")
     parser.add_argument(
@@ -195,6 +196,12 @@ After creation:
         "--shared-agent", help="Path to shared .agent/ directory (symlink)"
     )
     parser.add_argument("--parent", help="Parent workspace path (for monorepos)")
+    parser.add_argument(
+        "--provider",
+        choices=["gemini", "claude", "codex"],
+        default="gemini",
+        help="LLM provider (default: gemini)"
+    )
 
     # Validate/Upgrade/Update mode
     parser.add_argument(
@@ -364,7 +371,7 @@ After creation:
 
     # Interactive mode for create
     if args.tier is None:
-        header(f"GEMINI GRAND UNIFIED BOOTSTRAP (v{VERSION})")
+        header(f"MULTI-LLM DEVELOPMENT FRAMEWORK (v{VERSION})")
         print("\nSelect Tier:")
         for k, v in TIERS.items():
             print(f"  [{k}] {v['name']}")
@@ -412,6 +419,7 @@ After creation:
         args.quiet,
         args.verbose,
         py_version,
+        args.provider,
     )
 
 

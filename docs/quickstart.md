@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get started with the Gemini Native Workspace Framework in 5 minutes.
+Get started with the Multi-LLM Development Framework in 5 minutes.
 
 ---
 
@@ -297,7 +297,7 @@ rm -rf ../my-project
 - Inconsistent patterns
 - Hard to maintain
 
-**Gemini Native approach:**
+**Multi-LLM approach:**
 - Predictable structure
 - AI-optimized documentation
 - Reusable patterns

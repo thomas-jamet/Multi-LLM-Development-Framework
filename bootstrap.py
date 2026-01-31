@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
 """
-Gemini Native Workspace Bootstrap Script v1.0.0
+Multi-LLM Development Framework v1.0.0
 
-Creates, validates, and upgrades self-contained Gemini workspaces.
+Creates, validates, and upgrades self-contained LLM workspaces.
 
 Usage:
     python bootstrap.py                           # Interactive mode
     python bootstrap.py -t 2 -n myproject        # Create Standard workspace
     python bootstrap.py --validate ./myproject   # Validate workspace
     python bootstrap.py --upgrade ./myproject    # Upgrade to next tier
+    python bootstrap.py --provider claude        # Use Claude provider
 
 Features:
     - Tiered workspace system (Lite, Standard, Enterprise)
-    - LLM-agnostic design (Gemini, Claude, ChatGPT)
+    - LLM-agnostic design (Gemini, Claude, Codex)
     - Built-in validation and health monitoring
     - Tier upgrades with backup/rollback support
     - Template system for custom workspace types
 
 Build Information:
     Version: 1.0.0
-    Built: 2026-01-30 03:46:43 UTC
+    Built: 2026-01-31 09:32:05 UTC
     Source: Modular architecture (bootstrap_src/)
 
 This file is AUTO-GENERATED from modular source.
@@ -37,6 +38,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from abc import ABC, abstractmethod
 from typing import Dict, List
+from typing import Dict, Optional
 import sys
 import shutil
 import subprocess
@@ -71,7 +73,11 @@ EXIT_CONFIG_ERROR = 5
 EXIT_WORKSPACE_ERROR = 6
 EXIT_INTERRUPT = 130
 EXIT_UNEXPECTED_ERROR = 255
-SCRIPT_NAME = "Gemini Native Workspace Bootstrap"
+SCRIPT_NAME = "Multi-LLM Development Framework"
+
+# Supported LLM Providers
+SUPPORTED_PROVIDERS = ["gemini", "claude", "codex"]
+DEFAULT_PROVIDER = "gemini"
 
 # Tier Definitions
 TIER_NAMES = {"1": "Lite", "2": "Standard", "3": "Enterprise"}
@@ -294,14 +300,14 @@ PHONY_TARGETS = {
 # Default requirements by tier
 DEFAULT_REQUIREMENTS = {
     "1": [
-        "# Gemini Lite Workspace Dependencies",
+        "# Lite Workspace Dependencies",
         "# Add your project dependencies here",
         "",
         "# Code Quality",
         "ruff>=0.1.0",
     ],
     "2": [
-        "# Gemini Standard Workspace Dependencies",
+        "# Standard Workspace Dependencies",
         "# Add your project dependencies here",
         "",
         "# Testing",
@@ -313,7 +319,7 @@ DEFAULT_REQUIREMENTS = {
         "mypy>=1.0.0",
     ],
     "3": [
-        "# Gemini Enterprise Workspace Dependencies",
+        "# Enterprise Workspace Dependencies",
         "# Add your project dependencies here",
         "",
         "# High-performance package manager (recommended)",
@@ -378,8 +384,10 @@ GITIGNORE_PATTERNS = [
     ".coverage",
     "htmlcov/",
     "",
-    "# Gemini Specific",
+    "# LLM Provider Cache (provider-specific)",
     ".gemini/cache/",
+    ".claude/cache/",
+    ".codex/cache/",
     "",
     "# OS",
     ".DS_Store",
@@ -981,6 +989,416 @@ class LLMProvider(ABC):
         return []
 
 # ==============================================================================
+# Module: providers/gemini.py
+# ==============================================================================
+
+"""
+Gemini LLM Provider
+
+Concrete implementation of LLMProvider for Google Gemini workspaces.
+"""
+
+
+# Import base class (resolved at build time)
+try:
+    from providers.base import LLMProvider
+except ImportError:
+    from .base import LLMProvider
+
+# Version constant (imported from config in final build)
+VERSION = "2026.26"
+
+
+class GeminiProvider(LLMProvider):
+    """Gemini-specific workspace provider."""
+
+    @property
+    def name(self) -> str:
+        return "gemini"
+
+    @property
+    def config_filename(self) -> str:
+        return "GEMINI.md"
+
+    @property
+    def config_dirname(self) -> str:
+        return ".gemini"
+
+    def get_config_template(self, tier: str, project_name: str) -> str:
+        """Generate GEMINI.md constitution."""
+        base = """# Gemini Native Workspace ({edition} Edition)
+**Philosophy:** "{philosophy}"
+**Role:** {role}
+**Version:** {version}
+
+## 1. The Cognitive Laws
+1.  **Skill Check:** Before asking "How?", check `.agent/skills/`.
+2.  **Workflow Adherence:** Follow `.agent/workflows/` for complex tasks.
+3.  **Pattern Matching:** Code must mimic `.agent/patterns/`.
+4.  **Evolution:** Use the "Gardener Protocol" to modify rules.
+
+## 2. The Laws of Physics
+1.  **Hygiene:** Write temp files to `scratchpad/`.
+2.  **Safety:** **NEVER** print secrets to stdout.
+3.  **Continuity:** Update `docs/roadmap.md` every session.
+4.  **Interface:** Use `Makefile` targets. Do not run raw shell commands.
+5.  **Sessions:** Start with `make session-start`, end with `make session-end`.
+"""
+        if tier == "1":
+            return (
+                base.format(
+                    edition="Lite",
+                    philosophy="Reliable Automation",
+                    role="Automation Specialist",
+                    version=VERSION,
+                )
+                + "\n## 3. Architecture\n* **Input:** `data/inputs/`\n* **Logic:** `src/main.py`\n* **Output:** `logs/run.log`"
+            )
+        elif tier == "2":
+            return (
+                base.format(
+                    edition="Standard",
+                    philosophy="The Modular Monolith",
+                    role="Lead Software Engineer",
+                    version=VERSION,
+                )
+                + f"\n## 3. Architecture\n* **Modules:** `src/{project_name}/`\n* **Tests:** `tests/unit/`\n* **Context:** Shared Global Context."
+            )
+        else:
+            return (
+                base.format(
+                    edition="Enterprise",
+                    philosophy="Headless Organization",
+                    role="CTO / Architect",
+                    version=VERSION,
+                )
+                + f"\n## 3. Architecture\n* **Domains:** `src/{project_name}/domains/` (Strict Isolation)\n* **Contracts:** `outputs/contracts/`\n* **Evals:** `tests/evals/`\n\n## 4. Multi-Agent Protocol\n* Sub-Agents do NOT inherit Root Context.\n* Use `make shift-report` for handoffs.\n* Run `make snapshot` before major changes."
+            )
+
+    def get_readme_template(self, tier: str, project_name: str) -> str:
+        """Generate README.md content."""
+        return f"# {project_name}\n\nGenerated Gemini Workspace (Tier {tier})\n"
+
+    def get_mcp_config(self) -> Dict:
+        """Get MCP server configuration for Gemini."""
+        return {
+            "mcpServers": {}
+        }
+
+    def get_settings(self, tier: str) -> Dict:
+        """Get Gemini-specific settings."""
+        base_settings = {
+            "codeExecution": {"enabled": True},
+            "contextWindow": {"strategy": "auto"}
+        }
+        if tier == "3":
+            base_settings["multiAgent"] = {"enabled": True}
+        return base_settings
+
+    def get_additional_directories(self, tier: str) -> List[str]:
+        """Get Gemini-specific directories."""
+        return []
+
+# ==============================================================================
+# Module: providers/claude.py
+# ==============================================================================
+
+"""
+Claude LLM Provider
+
+Concrete implementation of LLMProvider for Anthropic Claude workspaces.
+"""
+
+
+# Import base class (resolved at build time)
+try:
+    from providers.base import LLMProvider
+except ImportError:
+    from .base import LLMProvider
+
+# Version constant (imported from config in final build)
+VERSION = "2026.26"
+
+
+class ClaudeProvider(LLMProvider):
+    """Claude-specific workspace provider."""
+
+    @property
+    def name(self) -> str:
+        return "claude"
+
+    @property
+    def config_filename(self) -> str:
+        return "CLAUDE.md"
+
+    @property
+    def config_dirname(self) -> str:
+        return ".claude"
+
+    def get_config_template(self, tier: str, project_name: str) -> str:
+        """Generate CLAUDE.md constitution."""
+        base = """# Claude Workspace ({edition} Edition)
+**Philosophy:** "{philosophy}"
+**Role:** {role}
+**Version:** {version}
+
+## 1. The Cognitive Laws
+1.  **Skill Check:** Before asking "How?", check `.agent/skills/`.
+2.  **Workflow Adherence:** Follow `.agent/workflows/` for complex tasks.
+3.  **Pattern Matching:** Code must mimic `.agent/patterns/`.
+4.  **Evolution:** Use the "Gardener Protocol" to modify rules.
+
+## 2. The Laws of Physics
+1.  **Hygiene:** Write temp files to `scratchpad/`.
+2.  **Safety:** **NEVER** print secrets to stdout.
+3.  **Continuity:** Update `docs/roadmap.md` every session.
+4.  **Interface:** Use `Makefile` targets. Do not run raw shell commands.
+5.  **Sessions:** Start with `make session-start`, end with `make session-end`.
+"""
+        if tier == "1":
+            return (
+                base.format(
+                    edition="Lite",
+                    philosophy="Reliable Automation",
+                    role="Automation Specialist",
+                    version=VERSION,
+                )
+                + "\n## 3. Architecture\n* **Input:** `data/inputs/`\n* **Logic:** `src/main.py`\n* **Output:** `logs/run.log`"
+            )
+        elif tier == "2":
+            return (
+                base.format(
+                    edition="Standard",
+                    philosophy="The Modular Monolith",
+                    role="Lead Software Engineer",
+                    version=VERSION,
+                )
+                + f"\n## 3. Architecture\n* **Modules:** `src/{project_name}/`\n* **Tests:** `tests/unit/`\n* **Context:** Shared Global Context."
+            )
+        else:
+            return (
+                base.format(
+                    edition="Enterprise",
+                    philosophy="Headless Organization",
+                    role="CTO / Architect",
+                    version=VERSION,
+                )
+                + f"\n## 3. Architecture\n* **Domains:** `src/{project_name}/domains/` (Strict Isolation)\n* **Contracts:** `outputs/contracts/`\n* **Evals:** `tests/evals/`\n\n## 4. Multi-Agent Protocol\n* Sub-Agents do NOT inherit Root Context.\n* Use `make shift-report` for handoffs.\n* Run `make snapshot` before major changes."
+            )
+
+    def get_readme_template(self, tier: str, project_name: str) -> str:
+        """Generate README.md content."""
+        return f"# {project_name}\n\nGenerated Claude Workspace (Tier {tier})\n"
+
+    def get_mcp_config(self) -> Dict:
+        """Get MCP server configuration for Claude."""
+        return {
+            "mcpServers": {}
+        }
+
+    def get_settings(self, tier: str) -> Dict:
+        """Get Claude-specific settings."""
+        base_settings = {
+            "permissions": {
+                "allow_file_write": True,
+                "allow_shell_commands": True
+            }
+        }
+        if tier == "3":
+            base_settings["multiAgent"] = {"enabled": True}
+        return base_settings
+
+    def get_additional_directories(self, tier: str) -> List[str]:
+        """Get Claude-specific directories."""
+        return []
+
+# ==============================================================================
+# Module: providers/codex.py
+# ==============================================================================
+
+"""
+Codex LLM Provider
+
+Concrete implementation of LLMProvider for OpenAI Codex workspaces.
+"""
+
+
+# Import base class (resolved at build time)
+try:
+    from providers.base import LLMProvider
+except ImportError:
+    from .base import LLMProvider
+
+# Version constant (imported from config in final build)
+VERSION = "2026.26"
+
+
+class CodexProvider(LLMProvider):
+    """Codex (OpenAI) specific workspace provider."""
+
+    @property
+    def name(self) -> str:
+        return "codex"
+
+    @property
+    def config_filename(self) -> str:
+        return "CODEX.md"
+
+    @property
+    def config_dirname(self) -> str:
+        return ".codex"
+
+    def get_config_template(self, tier: str, project_name: str) -> str:
+        """Generate CODEX.md constitution."""
+        base = """# Codex Workspace ({edition} Edition)
+**Philosophy:** "{philosophy}"
+**Role:** {role}
+**Version:** {version}
+
+## 1. The Cognitive Laws
+1.  **Skill Check:** Before asking "How?", check `.agent/skills/`.
+2.  **Workflow Adherence:** Follow `.agent/workflows/` for complex tasks.
+3.  **Pattern Matching:** Code must mimic `.agent/patterns/`.
+4.  **Evolution:** Use the "Gardener Protocol" to modify rules.
+
+## 2. The Laws of Physics
+1.  **Hygiene:** Write temp files to `scratchpad/`.
+2.  **Safety:** **NEVER** print secrets to stdout.
+3.  **Continuity:** Update `docs/roadmap.md` every session.
+4.  **Interface:** Use `Makefile` targets. Do not run raw shell commands.
+5.  **Sessions:** Start with `make session-start`, end with `make session-end`.
+"""
+        if tier == "1":
+            return (
+                base.format(
+                    edition="Lite",
+                    philosophy="Reliable Automation",
+                    role="Automation Specialist",
+                    version=VERSION,
+                )
+                + "\n## 3. Architecture\n* **Input:** `data/inputs/`\n* **Logic:** `src/main.py`\n* **Output:** `logs/run.log`"
+            )
+        elif tier == "2":
+            return (
+                base.format(
+                    edition="Standard",
+                    philosophy="The Modular Monolith",
+                    role="Lead Software Engineer",
+                    version=VERSION,
+                )
+                + f"\n## 3. Architecture\n* **Modules:** `src/{project_name}/`\n* **Tests:** `tests/unit/`\n* **Context:** Shared Global Context."
+            )
+        else:
+            return (
+                base.format(
+                    edition="Enterprise",
+                    philosophy="Headless Organization",
+                    role="CTO / Architect",
+                    version=VERSION,
+                )
+                + f"\n## 3. Architecture\n* **Domains:** `src/{project_name}/domains/` (Strict Isolation)\n* **Contracts:** `outputs/contracts/`\n* **Evals:** `tests/evals/`\n\n## 4. Multi-Agent Protocol\n* Sub-Agents do NOT inherit Root Context.\n* Use `make shift-report` for handoffs.\n* Run `make snapshot` before major changes."
+            )
+
+    def get_readme_template(self, tier: str, project_name: str) -> str:
+        """Generate README.md content."""
+        return f"# {project_name}\n\nGenerated Codex Workspace (Tier {tier})\n"
+
+    def get_mcp_config(self) -> Dict:
+        """Get MCP server configuration for Codex."""
+        return {
+            "mcpServers": {}
+        }
+
+    def get_settings(self, tier: str) -> Dict:
+        """Get Codex-specific settings."""
+        base_settings = {
+            "model": "gpt-4",
+            "temperature": 0.2
+        }
+        if tier == "3":
+            base_settings["multiAgent"] = {"enabled": True}
+        return base_settings
+
+    def get_additional_directories(self, tier: str) -> List[str]:
+        """Get Codex-specific directories."""
+        return []
+
+# ==============================================================================
+# Module: providers/__init__.py
+# ==============================================================================
+
+"""
+LLM Provider Registry
+
+Central registry for all supported LLM providers.
+"""
+
+
+
+
+# Supported providers list
+SUPPORTED_PROVIDERS = ["gemini", "claude", "codex"]
+
+# Default provider for backward compatibility
+DEFAULT_PROVIDER = "gemini"
+
+# Provider instances (lazy initialization)
+_provider_instances: Dict[str, LLMProvider] = {}
+
+
+def get_provider(name: Optional[str] = None) -> LLMProvider:
+    """Get a provider instance by name.
+    
+    Args:
+        name: Provider name (gemini, claude, codex). Defaults to DEFAULT_PROVIDER.
+        
+    Returns:
+        LLMProvider instance
+        
+    Raises:
+        ValueError: If provider name is not supported
+    """
+    provider_name = name or DEFAULT_PROVIDER
+    
+    if provider_name not in SUPPORTED_PROVIDERS:
+        raise ValueError(
+            f"Unsupported provider: {provider_name}. "
+            f"Supported providers: {', '.join(SUPPORTED_PROVIDERS)}"
+        )
+    
+    # Lazy initialization
+    if provider_name not in _provider_instances:
+        if provider_name == "gemini":
+            _provider_instances[provider_name] = GeminiProvider()
+        elif provider_name == "claude":
+            _provider_instances[provider_name] = ClaudeProvider()
+        elif provider_name == "codex":
+            _provider_instances[provider_name] = CodexProvider()
+    
+    return _provider_instances[provider_name]
+
+
+def get_all_providers() -> Dict[str, LLMProvider]:
+    """Get all provider instances.
+    
+    Returns:
+        Dictionary mapping provider names to instances
+    """
+    return {name: get_provider(name) for name in SUPPORTED_PROVIDERS}
+
+
+__all__ = [
+    "LLMProvider",
+    "GeminiProvider", 
+    "ClaudeProvider",
+    "CodexProvider",
+    "get_provider",
+    "get_all_providers",
+    "SUPPORTED_PROVIDERS",
+    "DEFAULT_PROVIDER",
+]
+
+# ==============================================================================
 # Module: core/makefile.py
 # ==============================================================================
 
@@ -1009,26 +1427,31 @@ def _script_path(tier: str, script_name: str) -> str:
         return f"scripts/shared/{script_name}.py"
 
 
-def get_makefile(tier: str, project_name: str) -> str:
+def get_makefile(tier: str, project_name: str, provider: str = "gemini") -> str:
     """
     Generate complete Makefile for specified tier.
 
     Args:
         tier: Workspace tier ("1" for Lite, "2" for Standard, "3" for Enterprise)
         project_name: Project name used in tier-specific targets
+        provider: LLM provider name (gemini, claude, codex)
 
     Returns:
         Complete Makefile content
     """
     return _get_makefile_tier_targets(
-        tier, project_name
-    ) + _get_makefile_common_targets(tier)
+        tier, project_name, provider
+    ) + _get_makefile_common_targets(tier, provider)
 
 
-def _get_makefile_tier_targets(tier: str, project_name: str) -> str:
+def _get_makefile_tier_targets(tier: str, project_name: str, provider: str = "gemini") -> str:
     """Generate tier-specific Makefile header and targets."""
+    # Get provider-specific config directory
+    config_dir = f".{provider}"  # .gemini, .claude, .codex
+    provider_title = provider.title()  # Gemini, Claude, Codex
+    
     if tier == "1":
-        return """# Gemini Lite Workspace
+        return f"""# {provider_title} Lite Workspace
 SHELL := /bin/bash
 .PHONY: run test install context clean audit session-start session-end init list-skills help doctor status health lint format ci-local deps-check security-scan session-force-end-all onboard sync search list-todos index backup skill-add skill-remove
 
@@ -1062,9 +1485,9 @@ test: ## Run tests (upgrade to Standard tier for full testing)
 
 # PURPOSE: Extract your project's "identity" for a new AI assistant.
 # WHEN: Run this at the start of every NEW LLM conversation.
-context: ## Export core Rules/Roadmap (GEMINI.md, etc.) for a new LLM conversation
+context: ## Export core Rules/Roadmap ({provider_title.upper()}.md, etc.) for a new LLM conversation
 	@echo "$(BLUE)📋 Exporting AI context...$(NC)"
-	@for file in $$(cat .gemini/manifests/core); do \\
+	@for file in $$(cat {config_dir}/manifests/core); do \\
 		if [ -f "$$file" ]; then \\
 			echo "$(GREEN)--- FILE: $$file ---$(NC)"; \\
 			cat "$$file"; \\
@@ -1105,7 +1528,7 @@ doctor: ## Diagnose common issues and check structure
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/manage_session.py start -- "${msg}"
+	@python3 scripts/manage_session.py start -- "${{{{msg}}}}"
 
 # PURPOSE: finalize your work, index it, and sync to GitHub (Lite tier - no quality gates).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
@@ -1117,7 +1540,7 @@ session-end: ## Close session: indices docs, commits & pushes (optional msg="...
 	@if [ -d .git ]; then \\
 		git add .; \\
 		if [ -n "$$(git status --porcelain)" ]; then \\
-			git commit -m "session end: ${msg}"; \\
+			git commit -m "session end: ${{{{msg}}}}"; \\
 		else \\
 			echo "$(GREEN)✨ Workspace clean$(NC)"; \\
 		fi; \\
@@ -1125,10 +1548,10 @@ session-end: ## Close session: indices docs, commits & pushes (optional msg="...
 	else \\
 		echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/manage_session.py end -- "${msg}"
+	@python3 scripts/manage_session.py end -- "${{{{msg}}}}"
 """
     elif tier == "2":
-        return f"""# Gemini Standard Workspace
+        return f"""# {provider_title} Standard Workspace
 SHELL := /bin/bash
 .PHONY: run test test-watch coverage typecheck install context clean audit session-start session-end init list-skills help snapshot restore doctor status health format update docs lint ci-local deps-check security-scan session-force-end-all onboard backup sync search list-todos index skill-add skill-remove
 
@@ -1451,7 +1874,7 @@ backup: snapshot ## Alias for snapshot
 """
 
 
-def _get_makefile_common_targets(tier: str = "1") -> str:
+def _get_makefile_common_targets(tier: str = "1", provider: str = "gemini") -> str:
     """Generate common Makefile targets shared across all tiers."""
     # Build tier-specific script paths
     sp_audit = _script_path(tier, "run_audit")
@@ -3558,8 +3981,9 @@ def create_workspace(
     quiet: bool = False,
     verbose: bool = False,
     python_version: str = DEFAULT_PYTHON_VERSION,
+    provider: str = DEFAULT_PROVIDER,
 ) -> None:
-    """Create a new Gemini workspace with specified configuration.
+    """Create a new workspace with specified configuration.
 
     Creates a complete workspace directory structure based on the selected tier,
     with all necessary configuration files, scripts, and cognitive layer components.
@@ -3577,6 +4001,7 @@ def create_workspace(
         quiet: If True, minimal output
         verbose: If True, detailed output
         python_version: Python version for CI workflows (e.g., '3.11')
+        provider: LLM provider name ('gemini', 'claude', 'codex')
 
     Raises:
         CreationError: On workspace creation failure
@@ -3593,7 +4018,7 @@ def create_workspace(
     if (target_path / ".git").exists() and not force:
         warning(f"Directory '{name}' contains an existing git repository")
         info(
-            "Use --force to overwrite, or manually add Gemini workspace files to the existing project"
+            "Use --force to overwrite, or manually add workspace files to the existing project"
         )
 
     pkg_name = name.replace("-", "_").replace(" ", "_").replace(".", "_").lower()
@@ -3614,7 +4039,7 @@ def create_workspace(
     if not dry_run:
         target_dir = Path(parent) if parent else Path.cwd()
         try:
-            test_path = target_dir / f".gemini_preflight_{name}"
+            test_path = target_dir / f".{provider}_preflight_{name}"
             test_path.mkdir()
             test_path.rmdir()
         except PermissionError as e:
@@ -3633,9 +4058,9 @@ def create_workspace(
             )
 
     # Use helper functions to build structure
-    dirs = _build_workspace_directories(tier, pkg_name)
+    dirs = _build_workspace_directories(tier, pkg_name, provider)
     files = _build_workspace_files(
-        tier, name, pkg_name, parent, python_version, template_files, template_deps
+        tier, name, pkg_name, parent, python_version, template_files, template_deps, provider
     )
 
     # --- DRY RUN ---
@@ -4307,9 +4732,16 @@ def _get_script_path(tier: str, script_name: str) -> str:
         return f"scripts/shared/{script_name}.py"
 
 
-def _build_workspace_directories(tier: str, pkg_name: str) -> List[str]:
+def _build_workspace_directories(tier: str, pkg_name: str, provider: str = "gemini") -> List[str]:
     """Build list of directories to create."""
+    # Import provider to get config_dirname
+    from providers import get_provider
+    provider_obj = get_provider(provider)
+    
     dirs = get_all_directories(tier).copy()
+    
+    # Add provider config directory
+    dirs.append(provider_obj.config_dirname.lstrip("."))
 
     # Add script category directories based on tier
     if tier == "2":  # Standard: categorized structure
@@ -4343,26 +4775,32 @@ def _build_workspace_files(
     python_version: str,
     template_files: dict | None,
     template_deps: list | None,
+    provider: str = "gemini",
 ) -> Dict[str, str]:
     """Build dictionary of {path: content} for all workspace files."""
+    from providers import get_provider
+    provider_obj = get_provider(provider)
+    
     files = {}
 
-    # Core
-    files["GEMINI.md"] = get_gemini_md(tier, pkg_name)
-    files["Makefile"] = get_makefile(tier, pkg_name)
+    # Core - use provider-specific config filename
+    files[provider_obj.config_filename] = provider_obj.get_config_template(tier, pkg_name)
+    files["Makefile"] = get_makefile(tier, pkg_name, provider)
     files["README.md"] = (
-        f"# {name}\n\nGenerated Gemini Workspace ({TIERS[tier]['name']})\n"
+        f"# {name}\n\nGenerated {provider_obj.name.title()} Workspace ({TIERS[tier]['name']})\n"
     )
     files[".gitignore"] = "\n".join(get_gitignore_for_tier(tier))
 
-    # Configuration
-    files[".gemini/workspace.json"] = json.dumps(
+    # Provider-specific configuration directory
+    config_dir = provider_obj.config_dirname
+    files[f"{config_dir}/workspace.json"] = json.dumps(
         {
             "version": VERSION,
             "tier": tier,
             "name": name,
+            "provider": provider,
             "created": datetime.now(timezone.utc).astimezone().isoformat(),
-            "standard": "Gemini Native Workspace Standard",
+            "standard": "Multi-LLM Development Framework",
             "parent_workspace": parent,
         },
         indent=2,
@@ -4622,13 +5060,14 @@ def main():
 
 def _main_impl():
     parser = argparse.ArgumentParser(
-        description=f"Gemini Native Workspace Bootstrap v{VERSION}",
+        description=f"Multi-LLM Development Framework v{VERSION}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
   python bootstrap.py                            Interactive mode
   python bootstrap.py -t 2 -n myapp              Create Standard workspace
   python bootstrap.py -t 3 -n platform --git     Create with git init
   python bootstrap.py -t 2 -n myapp --force -v   Overwrite with verbose output
+  python bootstrap.py -t 2 -n myapp --provider claude   Use Claude provider
   python bootstrap.py --from-template fastapi -n myapi  Use template
   python bootstrap.py --list-templates           Show available templates
   python bootstrap.py --validate ./myapp         Validate existing workspace
@@ -4651,7 +5090,7 @@ After creation:
         help="Tier: 1=Lite, 2=Standard, 3=Enterprise",
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"Gemini Bootstrap v{VERSION}"
+        "-V", "--version", action="version", version=f"Multi-LLM Dev Framework v{VERSION}"
     )
     parser.add_argument("-n", "--name", help="Project name")
     parser.add_argument(
@@ -4672,6 +5111,12 @@ After creation:
         "--shared-agent", help="Path to shared .agent/ directory (symlink)"
     )
     parser.add_argument("--parent", help="Parent workspace path (for monorepos)")
+    parser.add_argument(
+        "--provider",
+        choices=["gemini", "claude", "codex"],
+        default="gemini",
+        help="LLM provider (default: gemini)"
+    )
 
     # Validate/Upgrade/Update mode
     parser.add_argument(
@@ -4841,7 +5286,7 @@ After creation:
 
     # Interactive mode for create
     if args.tier is None:
-        header(f"GEMINI GRAND UNIFIED BOOTSTRAP (v{VERSION})")
+        header(f"MULTI-LLM DEVELOPMENT FRAMEWORK (v{VERSION})")
         print("\nSelect Tier:")
         for k, v in TIERS.items():
             print(f"  [{k}] {v['name']}")
@@ -4889,6 +5334,7 @@ After creation:
         args.quiet,
         args.verbose,
         py_version,
+        args.provider,
     )
 
 

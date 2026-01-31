@@ -25,6 +25,7 @@ from config import (
     get_all_directories,
     get_gitignore_for_tier,
     SCRIPT_CATEGORIES,
+    DEFAULT_PROVIDER,
 )
 
 from core.templates import (
@@ -85,8 +86,9 @@ def create_workspace(
     quiet: bool = False,
     verbose: bool = False,
     python_version: str = DEFAULT_PYTHON_VERSION,
+    provider: str = DEFAULT_PROVIDER,
 ) -> None:
-    """Create a new Gemini workspace with specified configuration.
+    """Create a new workspace with specified configuration.
 
     Creates a complete workspace directory structure based on the selected tier,
     with all necessary configuration files, scripts, and cognitive layer components.
@@ -104,6 +106,7 @@ def create_workspace(
         quiet: If True, minimal output
         verbose: If True, detailed output
         python_version: Python version for CI workflows (e.g., '3.11')
+        provider: LLM provider name ('gemini', 'claude', 'codex')
 
     Raises:
         CreationError: On workspace creation failure
@@ -120,7 +123,7 @@ def create_workspace(
     if (target_path / ".git").exists() and not force:
         warning(f"Directory '{name}' contains an existing git repository")
         info(
-            "Use --force to overwrite, or manually add Gemini workspace files to the existing project"
+            "Use --force to overwrite, or manually add workspace files to the existing project"
         )
 
     pkg_name = name.replace("-", "_").replace(" ", "_").replace(".", "_").lower()
@@ -141,7 +144,7 @@ def create_workspace(
     if not dry_run:
         target_dir = Path(parent) if parent else Path.cwd()
         try:
-            test_path = target_dir / f".gemini_preflight_{name}"
+            test_path = target_dir / f".{provider}_preflight_{name}"
             test_path.mkdir()
             test_path.rmdir()
         except PermissionError as e:
@@ -160,9 +163,9 @@ def create_workspace(
             )
 
     # Use helper functions to build structure
-    dirs = _build_workspace_directories(tier, pkg_name)
+    dirs = _build_workspace_directories(tier, pkg_name, provider)
     files = _build_workspace_files(
-        tier, name, pkg_name, parent, python_version, template_files, template_deps
+        tier, name, pkg_name, parent, python_version, template_files, template_deps, provider
     )
 
     # --- DRY RUN ---
@@ -834,9 +837,16 @@ def _get_script_path(tier: str, script_name: str) -> str:
         return f"scripts/shared/{script_name}.py"
 
 
-def _build_workspace_directories(tier: str, pkg_name: str) -> List[str]:
+def _build_workspace_directories(tier: str, pkg_name: str, provider: str = "gemini") -> List[str]:
     """Build list of directories to create."""
+    # Import provider to get config_dirname
+    from providers import get_provider
+    provider_obj = get_provider(provider)
+    
     dirs = get_all_directories(tier).copy()
+    
+    # Add provider config directory
+    dirs.append(provider_obj.config_dirname.lstrip("."))
 
     # Add script category directories based on tier
     if tier == "2":  # Standard: categorized structure
@@ -870,26 +880,32 @@ def _build_workspace_files(
     python_version: str,
     template_files: dict | None,
     template_deps: list | None,
+    provider: str = "gemini",
 ) -> Dict[str, str]:
     """Build dictionary of {path: content} for all workspace files."""
+    from providers import get_provider
+    provider_obj = get_provider(provider)
+    
     files = {}
 
-    # Core
-    files["GEMINI.md"] = get_gemini_md(tier, pkg_name)
-    files["Makefile"] = get_makefile(tier, pkg_name)
+    # Core - use provider-specific config filename
+    files[provider_obj.config_filename] = provider_obj.get_config_template(tier, pkg_name)
+    files["Makefile"] = get_makefile(tier, pkg_name, provider)
     files["README.md"] = (
-        f"# {name}\n\nGenerated Gemini Workspace ({TIERS[tier]['name']})\n"
+        f"# {name}\n\nGenerated {provider_obj.name.title()} Workspace ({TIERS[tier]['name']})\n"
     )
     files[".gitignore"] = "\n".join(get_gitignore_for_tier(tier))
 
-    # Configuration
-    files[".gemini/workspace.json"] = json.dumps(
+    # Provider-specific configuration directory
+    config_dir = provider_obj.config_dirname
+    files[f"{config_dir}/workspace.json"] = json.dumps(
         {
             "version": VERSION,
             "tier": tier,
             "name": name,
+            "provider": provider,
             "created": datetime.now(timezone.utc).astimezone().isoformat(),
-            "standard": "Gemini Native Workspace Standard",
+            "standard": "Multi-LLM Development Framework",
             "parent_workspace": parent,
         },
         indent=2,

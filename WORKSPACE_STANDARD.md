@@ -1,4 +1,4 @@
-# Gemini Native Workspace Standard v1.0
+# Multi-LLM Development Framework Standard v1.0
 
 **Philosophy:** "Headless Organization"
 
@@ -126,7 +126,7 @@ Every workspace has identity and version tracking:
   "tier": "2",
   "name": "my-project",
   "created": "2026-01-26T10:00:00+08:00",
-  "standard": "Gemini Native Workspace Standard"
+  "standard": "Multi-LLM Development Framework"
 }
 ```
 
@@ -438,7 +438,7 @@ cyclonedx-bom -o sbom.json
 For containerized deployments, use this Dockerfile template:
 
 ```dockerfile
-# Gemini Workspace Container
+# LLM Workspace Container
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -466,7 +466,7 @@ CMD ["make", "audit"]
 
 ```json
 {
-  "name": "Gemini Workspace",
+  "name": "LLM Workspace",
   "image": "python:3.11",
   "postCreateCommand": "pip install -e '.[dev]' && make onboard",
   "customizations": {
@@ -684,7 +684,7 @@ list-todos: ## List all 'TODO' and 'FIXME' tags
 
 # System Targets
 help: ## Show categorized help manual
-	@echo "\n$(BLUE)🛠️  Gemini Workspace Command Manual$(NC)"
+	@echo "\n$(BLUE)🛠️  LLM Workspace Command Manual$(NC)"
 	@awk '/^# ===+/ { \
 		category = $$0; \
 		gsub(/^# =+/, "", category); \
@@ -814,7 +814,7 @@ session-end: ## Close session: runs QA, clean, index, audits health, and syncs
 
 # System Targets
 help: ## Show categorized help manual
-	@echo "\n$(BLUE)🛠️  Gemini Workspace Command Manual$(NC)"
+	@echo "\n$(BLUE)🛠️  LLM Workspace Command Manual$(NC)"
 	@awk '/^# ===+/ { \
 		category = $$0; \
 		gsub(/^# =+/, "", category); \
@@ -1673,9 +1673,9 @@ start_http_server(8000)  # Metrics available at :8000/metrics
 
 ## **Version History**
 
-# Changelog - Gemini Native Workspace Standard
+# Changelog - Multi-LLM Development Framework Standard
 
-All notable changes to the Gemini Native Workspace Standard will be documented in this section.
+All notable changes to the Multi-LLM Development Framework Standard will be documented in this section.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Calendar Versioning](https://calver.org/) (YYYY.NN).

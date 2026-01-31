@@ -1,6 +1,6 @@
 # Contributing to Bootstrap Script
 
-Thank you for your interest in contributing to the Gemini Native Workspace Bootstrap Script!
+Thank you for your interest in contributing to the Multi-LLM Development Framework!
 
 This document provides guidelines for developing and maintaining the modular source code that compiles into the single-file `bootstrap.py` distribution.
 

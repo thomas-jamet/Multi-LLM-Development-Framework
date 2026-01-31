@@ -187,6 +187,10 @@ def build_bootstrap():
         "config.py",
         "core.py",
         "providers/base.py",
+        "providers/gemini.py",
+        "providers/claude.py",
+        "providers/codex.py",
+        "providers/__init__.py",
         "core/makefile.py",
         "core/templates/__init__.py",
         "core/templates/gemini_md.py",
@@ -247,19 +251,20 @@ def build_bootstrap():
 
     header = f'''#!/usr/bin/env python3
 """
-Gemini Native Workspace Bootstrap Script v{VERSION}
+Multi-LLM Development Framework v{VERSION}
 
-Creates, validates, and upgrades self-contained Gemini workspaces.
+Creates, validates, and upgrades self-contained LLM workspaces.
 
 Usage:
     python bootstrap.py                           # Interactive mode
     python bootstrap.py -t 2 -n myproject        # Create Standard workspace
     python bootstrap.py --validate ./myproject   # Validate workspace
     python bootstrap.py --upgrade ./myproject    # Upgrade to next tier
+    python bootstrap.py --provider claude        # Use Claude provider
 
 Features:
     - Tiered workspace system (Lite, Standard, Enterprise)
-    - LLM-agnostic design (Gemini, Claude, ChatGPT)
+    - LLM-agnostic design (Gemini, Claude, Codex)
     - Built-in validation and health monitoring
     - Tier upgrades with backup/rollback support
     - Template system for custom workspace types

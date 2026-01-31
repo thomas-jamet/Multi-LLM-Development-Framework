@@ -25,26 +25,31 @@ def _script_path(tier: str, script_name: str) -> str:
         return f"scripts/shared/{script_name}.py"
 
 
-def get_makefile(tier: str, project_name: str) -> str:
+def get_makefile(tier: str, project_name: str, provider: str = "gemini") -> str:
     """
     Generate complete Makefile for specified tier.
 
     Args:
         tier: Workspace tier ("1" for Lite, "2" for Standard, "3" for Enterprise)
         project_name: Project name used in tier-specific targets
+        provider: LLM provider name (gemini, claude, codex)
 
     Returns:
         Complete Makefile content
     """
     return _get_makefile_tier_targets(
-        tier, project_name
-    ) + _get_makefile_common_targets(tier)
+        tier, project_name, provider
+    ) + _get_makefile_common_targets(tier, provider)
 
 
-def _get_makefile_tier_targets(tier: str, project_name: str) -> str:
+def _get_makefile_tier_targets(tier: str, project_name: str, provider: str = "gemini") -> str:
     """Generate tier-specific Makefile header and targets."""
+    # Get provider-specific config directory
+    config_dir = f".{provider}"  # .gemini, .claude, .codex
+    provider_title = provider.title()  # Gemini, Claude, Codex
+    
     if tier == "1":
-        return """# Gemini Lite Workspace
+        return f"""# {provider_title} Lite Workspace
 SHELL := /bin/bash
 .PHONY: run test install context clean audit session-start session-end init list-skills help doctor status health lint format ci-local deps-check security-scan session-force-end-all onboard sync search list-todos index backup skill-add skill-remove
 
@@ -78,9 +83,9 @@ test: ## Run tests (upgrade to Standard tier for full testing)
 
 # PURPOSE: Extract your project's "identity" for a new AI assistant.
 # WHEN: Run this at the start of every NEW LLM conversation.
-context: ## Export core Rules/Roadmap (GEMINI.md, etc.) for a new LLM conversation
+context: ## Export core Rules/Roadmap ({provider_title.upper()}.md, etc.) for a new LLM conversation
 	@echo "$(BLUE)📋 Exporting AI context...$(NC)"
-	@for file in $$(cat .gemini/manifests/core); do \\
+	@for file in $$(cat {config_dir}/manifests/core); do \\
 		if [ -f "$$file" ]; then \\
 			echo "$(GREEN)--- FILE: $$file ---$(NC)"; \\
 			cat "$$file"; \\
@@ -121,7 +126,7 @@ doctor: ## Diagnose common issues and check structure
 # PURPOSE: Tell the system you are starting work.
 # WHEN: Run this EVERY TIME you begin a new task.
 session-start: ## Begin a tracked work session (optional msg="...")
-	@python3 scripts/manage_session.py start -- "${msg}"
+	@python3 scripts/manage_session.py start -- "${{{{msg}}}}"
 
 # PURPOSE: finalize your work, index it, and sync to GitHub (Lite tier - no quality gates).
 # WHEN: Run this EVERY TIME you finish a task or want to go home.
@@ -133,7 +138,7 @@ session-end: ## Close session: indices docs, commits & pushes (optional msg="...
 	@if [ -d .git ]; then \\
 		git add .; \\
 		if [ -n "$$(git status --porcelain)" ]; then \\
-			git commit -m "session end: ${msg}"; \\
+			git commit -m "session end: ${{{{msg}}}}"; \\
 		else \\
 			echo "$(GREEN)✨ Workspace clean$(NC)"; \\
 		fi; \\
@@ -141,10 +146,10 @@ session-end: ## Close session: indices docs, commits & pushes (optional msg="...
 	else \\
 		echo "$(YELLOW)⚠️  Not a git repository$(NC)"; \\
 	fi
-	@python3 scripts/manage_session.py end -- "${msg}"
+	@python3 scripts/manage_session.py end -- "${{{{msg}}}}"
 """
     elif tier == "2":
-        return f"""# Gemini Standard Workspace
+        return f"""# {provider_title} Standard Workspace
 SHELL := /bin/bash
 .PHONY: run test test-watch coverage typecheck install context clean audit session-start session-end init list-skills help snapshot restore doctor status health format update docs lint ci-local deps-check security-scan session-force-end-all onboard backup sync search list-todos index skill-add skill-remove
 
@@ -467,7 +472,7 @@ backup: snapshot ## Alias for snapshot
 """
 
 
-def _get_makefile_common_targets(tier: str = "1") -> str:
+def _get_makefile_common_targets(tier: str = "1", provider: str = "gemini") -> str:
     """Generate common Makefile targets shared across all tiers."""
     # Build tier-specific script paths
     sp_audit = _script_path(tier, "run_audit")

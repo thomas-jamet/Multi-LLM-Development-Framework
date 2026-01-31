@@ -22,7 +22,11 @@ EXIT_CONFIG_ERROR = 5
 EXIT_WORKSPACE_ERROR = 6
 EXIT_INTERRUPT = 130
 EXIT_UNEXPECTED_ERROR = 255
-SCRIPT_NAME = "Gemini Native Workspace Bootstrap"
+SCRIPT_NAME = "Multi-LLM Development Framework"
+
+# Supported LLM Providers
+SUPPORTED_PROVIDERS = ["gemini", "claude", "codex"]
+DEFAULT_PROVIDER = "gemini"
 
 # Tier Definitions
 TIER_NAMES = {"1": "Lite", "2": "Standard", "3": "Enterprise"}
@@ -245,14 +249,14 @@ PHONY_TARGETS = {
 # Default requirements by tier
 DEFAULT_REQUIREMENTS = {
     "1": [
-        "# Gemini Lite Workspace Dependencies",
+        "# Lite Workspace Dependencies",
         "# Add your project dependencies here",
         "",
         "# Code Quality",
         "ruff>=0.1.0",
     ],
     "2": [
-        "# Gemini Standard Workspace Dependencies",
+        "# Standard Workspace Dependencies",
         "# Add your project dependencies here",
         "",
         "# Testing",
@@ -264,7 +268,7 @@ DEFAULT_REQUIREMENTS = {
         "mypy>=1.0.0",
     ],
     "3": [
-        "# Gemini Enterprise Workspace Dependencies",
+        "# Enterprise Workspace Dependencies",
         "# Add your project dependencies here",
         "",
         "# High-performance package manager (recommended)",
@@ -329,8 +333,10 @@ GITIGNORE_PATTERNS = [
     ".coverage",
     "htmlcov/",
     "",
-    "# Gemini Specific",
+    "# LLM Provider Cache (provider-specific)",
     ".gemini/cache/",
+    ".claude/cache/",
+    ".codex/cache/",
     "",
     "# OS",
     ".DS_Store",

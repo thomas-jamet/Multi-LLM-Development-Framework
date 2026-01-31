@@ -1,119 +1,116 @@
-# Gemini Native Workspace Framework
+# Multi-LLM Development Framework
 
-A modular, maintainable framework for building AI-assisted workspaces with consistent structure, reusable skills, and orchestrated workflows.
+A modular, LLM-agnostic framework for building AI-assisted workspaces with consistent structure, reusable skills, and orchestrated workflows.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/thomas-jamet/gemini-workspace-framework)
-![GitHub Repo stars](https://img.shields.io/github/stars/thomas-jamet/gemini-workspace-framework?style=social)
 
-**[📚 Quick Start](docs/quickstart.md)** | [Documentation](docs/) | [Philosophy](docs/philosophy/framework_rationale.md) | [Contributing](CONTRIBUTING.md)
+**[📚 Quick Start](docs/quickstart.md)** | [Documentation](docs/) | [Contributing](CONTRIBUTING.md)
 
 **Author**: [Thomas Jamet](https://www.linkedin.com/in/jamet/)
 
 ---
 
-## 📁 Structure
+## 🤔 Why This Exists
+
+AI coding assistants excel at generation but provide **no organizational structure**. This leads to:
+
+- **"Vibe coding"** — ad-hoc file creation, no patterns, invisible technical debt
+- **Context inefficiency** — AI agents waste cycles asking "where is this file?"
+- **Demo vs. reality gap** — "build X in 10 minutes" content ignores 6-month maintenance
+
+**This framework solves the unsolved problem: long-term maintainability of AI-assisted projects.**
+
+### The Difference
+
+| Without Structure | With Framework |
+|-------------------|----------------|
+| Every project starts from scratch | Predictable patterns across all projects |
+| AI searches, asks clarifying questions | AI knows the structure, acts immediately |
+| Works for 1 project, fails at 5 | Scales from prototype to portfolio |
+
+> **Structure scales. Chaos doesn't.**
+
+---
+
+## ✨ Features
+
+- **LLM-Agnostic**: Supports Gemini, Claude, and Codex providers
+- **Tiered Architecture**: Lite → Standard → Enterprise (matched to project complexity)
+- **Skills + Workflows**: Atomic capabilities + orchestrated sequences
+- **Built-in Validation**: Health monitoring and structure verification
+- **Upgrade System**: Tier upgrades with backup/rollback support
+
+## 🚀 Quick Start
+
+```bash
+# Default (Gemini)
+python bootstrap.py -t 2 -n myproject
+
+# Claude provider
+python bootstrap.py -t 2 -n myproject --provider claude
+
+# Codex provider
+python bootstrap.py -t 2 -n myproject --provider codex
+```
+
+## 🔌 Supported Providers
+
+| Provider | Config File | Config Dir | Default |
+|----------|-------------|------------|---------|
+| Gemini | `GEMINI.md` | `.gemini/` | ✓ |
+| Claude | `CLAUDE.md` | `.claude/` | |
+| Codex | `CODEX.md` | `.codex/` | |
+
+---
+
+## 🎯 Core Principles
+
+1. **Structure Scales, Chaos Doesn't** — Ad-hoc works for 1 project, fails at 3, collapses at 5
+
+2. **Consistency is Cognitive Efficiency** — Same patterns = lower mental overhead
+
+3. **Documentation for Agents, Not Just Humans** — Config files provide AI context, reducing iteration cycles
+
+4. **Maintenance Matters More Than Generation** — Code is written once, modified dozens of times
+
+5. **Tiered Complexity** — Match project structure to actual needs (Lite/Standard/Enterprise)
+
+---
+
+## 📁 Project Structure
 
 ```
-bootstrap_src/
-├── build.py                    # Build script (compiles modules → bootstrap.py)
-├── config.py                   # Constants, tier definitions, exit codes
+├── build.py                    # Compiles modules → bootstrap.py
+├── config.py                   # Constants, tier definitions
 ├── core.py                     # Exceptions, utilities, validators
-├── content_generators.py       # Content generation functions
-├── __main__.py                 # CLI parsing and main() entry point
+├── __main__.py                 # CLI entry point
 ├── core/                       # Core functionality
 │   ├── makefile.py            # Makefile generation
-│   └── templates.py           # Template generation (11 functions)
+│   └── templates/             # Template generation
 ├── operations/                 # Workspace operations
-│   └── create.py              # Create, validate, upgrade, rollback
+│   └── create.py              # Create, validate, upgrade
 └── providers/                  # LLM provider abstraction
-    └── base.py                # Provider interface
-
-8 modules • 3,683 lines → compiles to 4,187-line bootstrap.py
+    ├── base.py                # Provider interface
+    ├── gemini.py              # Gemini implementation
+    ├── claude.py              # Claude implementation
+    └── codex.py               # Codex implementation
 ```
 
 ## 🔨 Building
-
-Compile the modular source into a single distributable file:
 
 ```bash
 python build.py
 ```
 
-This creates `bootstrap.py` in the parent directory with:
-- All external imports preserved
-- Internal imports stripped
-- Modules concatenated in dependency order
-- Build metadata header
-
-## 📝 Module Guidelines
-
-- **Target size**: < 500 lines per module (flexible for complex modules)
-- **Naming**: Clear, descriptive names following Python conventions
-- **Dependencies**: Core modules first, operations last
-- **Imports**: Use absolute imports; avoid `from bootstrap_src.*`
-
-## 🧪 Development Workflow
-
-1. **Edit modules** in `bootstrap_src/`
-2. **Run build script**: `python build.py`
-3. **Test output**: `python ../bootstrap.py --version`
-4. **Verify functionality**: Test workspace creation, validation, etc.
-
-## 📊 Module Responsibilities
-
-| Module | Lines | Purpose |
-|--------|-------|---------|
-| `core.py` | 411 | Base exceptions, logging, validation, utilities |
-| `config.py` | 250 | Constants (VERSION, TIERS, EXIT codes, paths) |
-| `providers/base.py` | 108 | LLM provider interface (LLM-agnostic design) |
-| `core/makefile.py` | 638 | Makefile generation for all tiers |
-| `core/templates.py` | 638 | File templates (GEMINI.md, scripts, schemas) |
-| `content_generators.py` | 388 | workspace.json, README, getting started |
-| `operations/create.py` | 706 | Workspace CRUD operations |
-| `__main__.py` | 339 | argparse CLI, main() entry point |
-
-## 🎯 Design Principles
-
-1. **Single Responsibility**: Each module has one clear purpose
-2. **Dependency Order**: Core → Config → Providers → Operations → CLI
-3. **LLM-Agnostic**: Provider abstraction allows multi-LLM support
-4. **Build-Time Compilation**: Users get single file, developers get modules
-5. **Backward Compatible**: Compiled output is a drop-in replacement
-6. **Tier-Aware Architecture**: Script organization scales from flat (Lite) to categorized (Standard) to domain-based (Enterprise)
-
-## 🔧 Modifying the Build Process
-
-The `build.py` script:
-1. Reads modules in `module_order` (line 97)
-2. Strips internal imports (`from bootstrap_src.*`, `from .`)
-3. Preserves external imports (`import os`, `from pathlib import Path`)
-4. Concatenates code with module separator comments
-5. Adds build metadata header
-
-To add a new module:
-1. Create the module file
-2. Add to `module_order` in `build.py` (in dependency order)
-3. Rebuild and test
-
-## 📖 Further Reading
-
-- Parent directory walkthrough: `../brain/.../walkthrough.md`
-- Task breakdown: `../brain/.../task.md`
-- Original monolith: `../docs/knowledge/technical/20260127 - Technical - Gemini - Unified Workspace Bootstrap Script.py`
+Creates `bootstrap.py` (~5,300 lines) with all modules concatenated.
 
 ---
 
 ## 💬 Questions & Contact
 
-- **Questions/Discussions**: [GitHub Discussions](https://github.com/thomas-jamet/gemini-workspace-framework/discussions)
-- **Bugs/Features**: [GitHub Issues](https://github.com/thomas-jamet/gemini-workspace-framework/issues)
-- **Professional contact**: [LinkedIn](https://www.linkedin.com/in/jamet/)
+- **Discussions**: [GitHub Discussions](https://github.com/thomas-jamet/gemini-workspace-framework/discussions)
+- **Issues**: [GitHub Issues](https://github.com/thomas-jamet/gemini-workspace-framework/issues)
+- **Author**: [LinkedIn](https://www.linkedin.com/in/jamet/)
 
----
-
-**Built with**: Automated extraction + manual refinement  
-**Maintainability**: 36% reduction in source lines vs original monolith  
-**Architecture**: Modular source → Single-file distribution  
 **License**: MIT
