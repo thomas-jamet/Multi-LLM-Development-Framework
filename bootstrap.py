@@ -20,7 +20,7 @@ Features:
 
 Build Information:
     Version: 1.0.0
-    Built: 2026-01-31 09:32:05 UTC
+    Built: 2026-02-02 13:32:01 UTC
     Source: Modular architecture (bootstrap_src/)
 
 This file is AUTO-GENERATED from modular source.
@@ -37,8 +37,8 @@ import logging
 from pathlib import Path
 from datetime import datetime, timezone
 from abc import ABC, abstractmethod
-from typing import Dict, List
-from typing import Dict, Optional
+from typing import Dict
+from typing import Optional
 import sys
 import shutil
 import subprocess
@@ -60,7 +60,7 @@ Defines tier specifications, default structures, and branding.
 
 
 # Version Information
-VERSION = "2026.26"
+VERSION = "1.0.1"
 DEFAULT_PYTHON_VERSION = "3.11"
 
 # Exit Codes
@@ -483,7 +483,7 @@ Defines exceptions, utilities, validators, and helper functions.
 
 
 # Version constant
-VERSION = "2026.26"
+VERSION = "1.0.1"
 DEFAULT_PYTHON_VERSION = "3.11"
 VALID_PYTHON_VERSION_PATTERN = re.compile(r"^3\.\d+$")
 
@@ -878,6 +878,7 @@ class ConfigurationError(WorkspaceError):
 
     pass
 
+
 # ==============================================================================
 # Module: providers/base.py
 # ==============================================================================
@@ -888,7 +889,6 @@ LLM Provider Base Class
 Abstract interface for LLM-specific workspace configurations.
 Providers implement templates for config files, MCP settings, and directory structures.
 """
-
 
 
 class LLMProvider(ABC):
@@ -988,6 +988,7 @@ class LLMProvider(ABC):
         """
         return []
 
+
 # ==============================================================================
 # Module: providers/gemini.py
 # ==============================================================================
@@ -1006,7 +1007,7 @@ except ImportError:
     from .base import LLMProvider
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 class GeminiProvider(LLMProvider):
@@ -1081,15 +1082,13 @@ class GeminiProvider(LLMProvider):
 
     def get_mcp_config(self) -> Dict:
         """Get MCP server configuration for Gemini."""
-        return {
-            "mcpServers": {}
-        }
+        return {"mcpServers": {}}
 
     def get_settings(self, tier: str) -> Dict:
         """Get Gemini-specific settings."""
         base_settings = {
             "codeExecution": {"enabled": True},
-            "contextWindow": {"strategy": "auto"}
+            "contextWindow": {"strategy": "auto"},
         }
         if tier == "3":
             base_settings["multiAgent"] = {"enabled": True}
@@ -1098,6 +1097,7 @@ class GeminiProvider(LLMProvider):
     def get_additional_directories(self, tier: str) -> List[str]:
         """Get Gemini-specific directories."""
         return []
+
 
 # ==============================================================================
 # Module: providers/claude.py
@@ -1117,7 +1117,7 @@ except ImportError:
     from .base import LLMProvider
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 class ClaudeProvider(LLMProvider):
@@ -1192,17 +1192,12 @@ class ClaudeProvider(LLMProvider):
 
     def get_mcp_config(self) -> Dict:
         """Get MCP server configuration for Claude."""
-        return {
-            "mcpServers": {}
-        }
+        return {"mcpServers": {}}
 
     def get_settings(self, tier: str) -> Dict:
         """Get Claude-specific settings."""
         base_settings = {
-            "permissions": {
-                "allow_file_write": True,
-                "allow_shell_commands": True
-            }
+            "permissions": {"allow_file_write": True, "allow_shell_commands": True}
         }
         if tier == "3":
             base_settings["multiAgent"] = {"enabled": True}
@@ -1211,6 +1206,7 @@ class ClaudeProvider(LLMProvider):
     def get_additional_directories(self, tier: str) -> List[str]:
         """Get Claude-specific directories."""
         return []
+
 
 # ==============================================================================
 # Module: providers/codex.py
@@ -1230,7 +1226,7 @@ except ImportError:
     from .base import LLMProvider
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 class CodexProvider(LLMProvider):
@@ -1305,16 +1301,11 @@ class CodexProvider(LLMProvider):
 
     def get_mcp_config(self) -> Dict:
         """Get MCP server configuration for Codex."""
-        return {
-            "mcpServers": {}
-        }
+        return {"mcpServers": {}}
 
     def get_settings(self, tier: str) -> Dict:
         """Get Codex-specific settings."""
-        base_settings = {
-            "model": "gpt-4",
-            "temperature": 0.2
-        }
+        base_settings = {"model": "gpt-4", "temperature": 0.2}
         if tier == "3":
             base_settings["multiAgent"] = {"enabled": True}
         return base_settings
@@ -1322,6 +1313,7 @@ class CodexProvider(LLMProvider):
     def get_additional_directories(self, tier: str) -> List[str]:
         """Get Codex-specific directories."""
         return []
+
 
 # ==============================================================================
 # Module: providers/__init__.py
@@ -1332,8 +1324,6 @@ LLM Provider Registry
 
 Central registry for all supported LLM providers.
 """
-
-
 
 
 # Supported providers list
@@ -1348,24 +1338,24 @@ _provider_instances: Dict[str, LLMProvider] = {}
 
 def get_provider(name: Optional[str] = None) -> LLMProvider:
     """Get a provider instance by name.
-    
+
     Args:
         name: Provider name (gemini, claude, codex). Defaults to DEFAULT_PROVIDER.
-        
+
     Returns:
         LLMProvider instance
-        
+
     Raises:
         ValueError: If provider name is not supported
     """
     provider_name = name or DEFAULT_PROVIDER
-    
+
     if provider_name not in SUPPORTED_PROVIDERS:
         raise ValueError(
             f"Unsupported provider: {provider_name}. "
             f"Supported providers: {', '.join(SUPPORTED_PROVIDERS)}"
         )
-    
+
     # Lazy initialization
     if provider_name not in _provider_instances:
         if provider_name == "gemini":
@@ -1374,13 +1364,13 @@ def get_provider(name: Optional[str] = None) -> LLMProvider:
             _provider_instances[provider_name] = ClaudeProvider()
         elif provider_name == "codex":
             _provider_instances[provider_name] = CodexProvider()
-    
+
     return _provider_instances[provider_name]
 
 
 def get_all_providers() -> Dict[str, LLMProvider]:
     """Get all provider instances.
-    
+
     Returns:
         Dictionary mapping provider names to instances
     """
@@ -1389,7 +1379,7 @@ def get_all_providers() -> Dict[str, LLMProvider]:
 
 __all__ = [
     "LLMProvider",
-    "GeminiProvider", 
+    "GeminiProvider",
     "ClaudeProvider",
     "CodexProvider",
     "get_provider",
@@ -1408,7 +1398,6 @@ Makefile Generation Module
 Generates tier-specific Makefiles using composition pattern:
 Final Makefile = TIER-SPECIFIC + COMMON
 """
-
 
 
 def _script_path(tier: str, script_name: str) -> str:
@@ -1444,12 +1433,14 @@ def get_makefile(tier: str, project_name: str, provider: str = "gemini") -> str:
     ) + _get_makefile_common_targets(tier, provider)
 
 
-def _get_makefile_tier_targets(tier: str, project_name: str, provider: str = "gemini") -> str:
+def _get_makefile_tier_targets(
+    tier: str, project_name: str, provider: str = "gemini"
+) -> str:
     """Generate tier-specific Makefile header and targets."""
     # Get provider-specific config directory
     config_dir = f".{provider}"  # .gemini, .claude, .codex
     provider_title = provider.title()  # Gemini, Claude, Codex
-    
+
     if tier == "1":
         return f"""# {provider_title} Lite Workspace
 SHELL := /bin/bash
@@ -1520,6 +1511,11 @@ doctor: ## Diagnose common issues and check structure
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
 	@python3 scripts/run_audit.py
+
+# PURPOSE: Refresh the master index of all documents.
+index: ## Regenerate the master Table of Contents in WORKSPACE_INDEX.md
+	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
+	@python3 scripts/index_docs.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -1786,6 +1782,11 @@ context-backend: ## Output backend-specific manifests
 docs: ## Generate static documentation site
 	@echo "$(BLUE)📚 Generating documentation...$(NC)"
 	@command -v mkdocs >/dev/null 2>&1 && mkdocs build || echo \\"$(YELLOW)⚠️  mkdocs not found. Install with: pip install mkdocs$(NC)\\"
+
+# PURPOSE: Refresh the master index of all documents.
+index: ## Regenerate the master Table of Contents in WORKSPACE_INDEX.md
+	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
+	@python3 scripts/shared/index_docs.py
 
 # ==============================================================================
 # 📦 ENVIRONMENT MANAGEMENT
@@ -2072,6 +2073,7 @@ backup: snapshot ## Alias for snapshot
 """
     )
 
+
 # ==============================================================================
 # Module: core/templates/__init__.py
 # ==============================================================================
@@ -2127,7 +2129,7 @@ Generates tier-specific GEMINI.md constitution files.
 """
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 def get_gemini_md(tier: str, project_name: str) -> str:
@@ -2181,6 +2183,7 @@ def get_gemini_md(tier: str, project_name: str) -> str:
             + f"\n## 3. Architecture\n* **Domains:** `src/{project_name}/domains/` (Strict Isolation)\n* **Contracts:** `outputs/contracts/`\n* **Evals:** `tests/evals/`\n\n## 4. Multi-Agent Protocol\n* Sub-Agents do NOT inherit Root Context.\n* Use `make shift-report` for handoffs.\n* Run `make snapshot` before major changes."
         )
 
+
 # ==============================================================================
 # Module: core/templates/github_workflow.py
 # ==============================================================================
@@ -2190,7 +2193,6 @@ GitHub Workflow Template Generator
 
 Generates tier-specific GitHub Actions CI workflows.
 """
-
 
 
 def get_github_workflow(tier: str, python_version: str = DEFAULT_PYTHON_VERSION) -> str:
@@ -2305,6 +2307,7 @@ jobs:
         run: uv run pytest tests/evals/ -q
 """
         )
+
 
 # ==============================================================================
 # Module: core/templates/scripts_core.py
@@ -2675,6 +2678,7 @@ if __name__ == "__main__":
             print(f"  • {issue}")
 '''
 
+
 # ==============================================================================
 # Module: core/templates/scripts_snapshot.py
 # ==============================================================================
@@ -2872,6 +2876,7 @@ def main():
 if __name__ == "__main__":
     main()
 '''
+
 
 # ==============================================================================
 # Module: core/templates/scripts_skills.py
@@ -3355,6 +3360,7 @@ if __name__ == "__main__":
     print()
 '''
 
+
 # ==============================================================================
 # Module: core/templates/schemas.py
 # ==============================================================================
@@ -3364,7 +3370,6 @@ JSON Schema Template Generators
 
 Generates JSON schemas for workspace validation and IDE autocomplete.
 """
-
 
 
 def get_workspace_schema() -> str:
@@ -3520,6 +3525,7 @@ def get_bootstrap_config_schema() -> str:
         indent=2,
     )
 
+
 # ==============================================================================
 # Module: core/templates/configs.py
 # ==============================================================================
@@ -3559,6 +3565,7 @@ repos:
   #       stages: [commit-msg]
 """
 
+
 # ==============================================================================
 # Module: content_generators.py
 # ==============================================================================
@@ -3568,7 +3575,6 @@ Content Generators Module
 
 Generates workspace.json, README, getting started guides, etc.
 """
-
 
 
 # Version constant (imported from config in final build)
@@ -3950,6 +3956,7 @@ regexes = [
 ]
 """
 
+
 # ==============================================================================
 # Module: operations/create.py
 # ==============================================================================
@@ -3959,13 +3966,6 @@ Workspace Operations Module
 
 Handles workspace creation, validation, and upgrades.
 """
-
-
-
-
-
-
-
 
 
 def create_workspace(
@@ -4060,7 +4060,14 @@ def create_workspace(
     # Use helper functions to build structure
     dirs = _build_workspace_directories(tier, pkg_name, provider)
     files = _build_workspace_files(
-        tier, name, pkg_name, parent, python_version, template_files, template_deps, provider
+        tier,
+        name,
+        pkg_name,
+        parent,
+        python_version,
+        template_files,
+        template_deps,
+        provider,
     )
 
     # --- DRY RUN ---
@@ -4732,14 +4739,17 @@ def _get_script_path(tier: str, script_name: str) -> str:
         return f"scripts/shared/{script_name}.py"
 
 
-def _build_workspace_directories(tier: str, pkg_name: str, provider: str = "gemini") -> List[str]:
+def _build_workspace_directories(
+    tier: str, pkg_name: str, provider: str = "gemini"
+) -> List[str]:
     """Build list of directories to create."""
     # Import provider to get config_dirname
     from providers import get_provider
+
     provider_obj = get_provider(provider)
-    
+
     dirs = get_all_directories(tier).copy()
-    
+
     # Add provider config directory
     dirs.append(provider_obj.config_dirname.lstrip("."))
 
@@ -4779,12 +4789,15 @@ def _build_workspace_files(
 ) -> Dict[str, str]:
     """Build dictionary of {path: content} for all workspace files."""
     from providers import get_provider
+
     provider_obj = get_provider(provider)
-    
+
     files = {}
 
     # Core - use provider-specific config filename
-    files[provider_obj.config_filename] = provider_obj.get_config_template(tier, pkg_name)
+    files[provider_obj.config_filename] = provider_obj.get_config_template(
+        tier, pkg_name
+    )
     files["Makefile"] = get_makefile(tier, pkg_name, provider)
     files["README.md"] = (
         f"# {name}\n\nGenerated {provider_obj.name.title()} Workspace ({TIERS[tier]['name']})\n"
@@ -4822,7 +4835,9 @@ def _build_workspace_files(
         # Add SkillsMP client and search script to scripts/shared/
         files["scripts/shared/skillsmp_client.py"] = get_skillsmp_client_script()
         files["scripts/shared/skillsmp_search.py"] = get_skillsmp_search_script()
-        files[".agent/workflows/discover_skills.md"] = get_skill_discovery_workflow()
+        files[".agent/workflows/shared/discover_skills.md"] = (
+            get_skill_discovery_workflow()
+        )
 
     # Documentation
     files["docs/roadmap.md"] = f"# Roadmap: {name}\n\n- [ ] Initial Setup"
@@ -4914,6 +4929,7 @@ def get_vscode_settings():
 def get_settings(tier):
     return "{}"
 
+
 # ==============================================================================
 # Module: __main__.py
 # ==============================================================================
@@ -4932,7 +4948,7 @@ are expected and suppressed with # noqa: F821 comments.
 
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 DEFAULT_PYTHON_VERSION = "3.11"
 
 # Exit codes
@@ -5090,7 +5106,10 @@ After creation:
         help="Tier: 1=Lite, 2=Standard, 3=Enterprise",
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"Multi-LLM Dev Framework v{VERSION}"
+        "-V",
+        "--version",
+        action="version",
+        version=f"Multi-LLM Dev Framework v{VERSION}",
     )
     parser.add_argument("-n", "--name", help="Project name")
     parser.add_argument(
@@ -5115,7 +5134,7 @@ After creation:
         "--provider",
         choices=["gemini", "claude", "codex"],
         default="gemini",
-        help="LLM provider (default: gemini)"
+        help="LLM provider (default: gemini)",
     )
 
     # Validate/Upgrade/Update mode

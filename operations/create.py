@@ -165,7 +165,14 @@ def create_workspace(
     # Use helper functions to build structure
     dirs = _build_workspace_directories(tier, pkg_name, provider)
     files = _build_workspace_files(
-        tier, name, pkg_name, parent, python_version, template_files, template_deps, provider
+        tier,
+        name,
+        pkg_name,
+        parent,
+        python_version,
+        template_files,
+        template_deps,
+        provider,
     )
 
     # --- DRY RUN ---
@@ -837,14 +844,17 @@ def _get_script_path(tier: str, script_name: str) -> str:
         return f"scripts/shared/{script_name}.py"
 
 
-def _build_workspace_directories(tier: str, pkg_name: str, provider: str = "gemini") -> List[str]:
+def _build_workspace_directories(
+    tier: str, pkg_name: str, provider: str = "gemini"
+) -> List[str]:
     """Build list of directories to create."""
     # Import provider to get config_dirname
     from providers import get_provider
+
     provider_obj = get_provider(provider)
-    
+
     dirs = get_all_directories(tier).copy()
-    
+
     # Add provider config directory
     dirs.append(provider_obj.config_dirname.lstrip("."))
 
@@ -884,12 +894,15 @@ def _build_workspace_files(
 ) -> Dict[str, str]:
     """Build dictionary of {path: content} for all workspace files."""
     from providers import get_provider
+
     provider_obj = get_provider(provider)
-    
+
     files = {}
 
     # Core - use provider-specific config filename
-    files[provider_obj.config_filename] = provider_obj.get_config_template(tier, pkg_name)
+    files[provider_obj.config_filename] = provider_obj.get_config_template(
+        tier, pkg_name
+    )
     files["Makefile"] = get_makefile(tier, pkg_name, provider)
     files["README.md"] = (
         f"# {name}\n\nGenerated {provider_obj.name.title()} Workspace ({TIERS[tier]['name']})\n"
@@ -927,7 +940,9 @@ def _build_workspace_files(
         # Add SkillsMP client and search script to scripts/shared/
         files["scripts/shared/skillsmp_client.py"] = get_skillsmp_client_script()
         files["scripts/shared/skillsmp_search.py"] = get_skillsmp_search_script()
-        files[".agent/workflows/discover_skills.md"] = get_skill_discovery_workflow()
+        files[".agent/workflows/shared/discover_skills.md"] = (
+            get_skill_discovery_workflow()
+        )
 
     # Documentation
     files["docs/roadmap.md"] = f"# Roadmap: {name}\n\n- [ ] Initial Setup"

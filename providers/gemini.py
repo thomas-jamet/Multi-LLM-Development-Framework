@@ -14,7 +14,7 @@ except ImportError:
     from .base import LLMProvider
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 class GeminiProvider(LLMProvider):
@@ -89,15 +89,13 @@ class GeminiProvider(LLMProvider):
 
     def get_mcp_config(self) -> Dict:
         """Get MCP server configuration for Gemini."""
-        return {
-            "mcpServers": {}
-        }
+        return {"mcpServers": {}}
 
     def get_settings(self, tier: str) -> Dict:
         """Get Gemini-specific settings."""
         base_settings = {
             "codeExecution": {"enabled": True},
-            "contextWindow": {"strategy": "auto"}
+            "contextWindow": {"strategy": "auto"},
         }
         if tier == "3":
             base_settings["multiAgent"] = {"enabled": True}

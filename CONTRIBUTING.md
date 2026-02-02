@@ -21,7 +21,7 @@ This compiles the 8 Python modules into `../bootstrap.py`.
 
 ```bash
 python3 ../bootstrap.py --version
-# Expected: Gemini Bootstrap v1.0.0
+# Expected: Multi-LLM Development Framework v1.0.1
 
 python3 ../bootstrap.py --run-self-tests
 # Expected: ✅ All self-tests passed

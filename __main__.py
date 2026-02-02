@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 DEFAULT_PYTHON_VERSION = "3.11"
 
 # Exit codes
@@ -175,7 +175,10 @@ After creation:
         help="Tier: 1=Lite, 2=Standard, 3=Enterprise",
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"Multi-LLM Dev Framework v{VERSION}"
+        "-V",
+        "--version",
+        action="version",
+        version=f"Multi-LLM Dev Framework v{VERSION}",
     )
     parser.add_argument("-n", "--name", help="Project name")
     parser.add_argument(
@@ -200,7 +203,7 @@ After creation:
         "--provider",
         choices=["gemini", "claude", "codex"],
         default="gemini",
-        help="LLM provider (default: gemini)"
+        help="LLM provider (default: gemini)",
     )
 
     # Validate/Upgrade/Update mode

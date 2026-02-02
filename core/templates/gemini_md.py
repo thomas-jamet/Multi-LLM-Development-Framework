@@ -6,7 +6,7 @@ Generates tier-specific GEMINI.md constitution files.
 """
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 def get_gemini_md(tier: str, project_name: str) -> str:

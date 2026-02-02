@@ -18,7 +18,7 @@ from config import TIERS, TEMPLATES, SNAPSHOTS_DIR
 
 
 # Version constant
-VERSION = "2026.26"
+VERSION = "1.0.1"
 DEFAULT_PYTHON_VERSION = "3.11"
 VALID_PYTHON_VERSION_PATTERN = re.compile(r"^3\.\d+$")
 

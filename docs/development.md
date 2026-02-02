@@ -121,7 +121,7 @@ python3 ../bootstrap.py --run-self-tests
 ```bash
 # Version check
 python3 ../bootstrap.py --version
-# Expected: Gemini Bootstrap v1.0.0
+# Expected: Multi-LLM Development Framework v1.0.1
 
 # Self-tests
 python3 ../bootstrap.py --run-self-tests
@@ -304,7 +304,7 @@ cp ../bootstrap.py /path/to/distribution/
 For critical bugs:
 
 ```bash
-# Increment version (e.g., 2026.26 → 2026.27)
+# Increment version (e.g., 1.0.1 → 1.0.2)
 vim config.py
 
 # Fix bug in affected module

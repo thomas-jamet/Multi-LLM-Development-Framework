@@ -14,7 +14,7 @@ except ImportError:
     from .base import LLMProvider
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 class CodexProvider(LLMProvider):
@@ -89,16 +89,11 @@ class CodexProvider(LLMProvider):
 
     def get_mcp_config(self) -> Dict:
         """Get MCP server configuration for Codex."""
-        return {
-            "mcpServers": {}
-        }
+        return {"mcpServers": {}}
 
     def get_settings(self, tier: str) -> Dict:
         """Get Codex-specific settings."""
-        base_settings = {
-            "model": "gpt-4",
-            "temperature": 0.2
-        }
+        base_settings = {"model": "gpt-4", "temperature": 0.2}
         if tier == "3":
             base_settings["multiAgent"] = {"enabled": True}
         return base_settings

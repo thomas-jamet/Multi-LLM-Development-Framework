@@ -9,7 +9,7 @@ Defines tier specifications, default structures, and branding.
 from typing import List
 
 # Version Information
-VERSION = "2026.26"
+VERSION = "1.0.1"
 DEFAULT_PYTHON_VERSION = "3.11"
 
 # Exit Codes

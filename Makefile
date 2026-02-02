@@ -117,7 +117,7 @@ status: ## Show workspace health dashboard
 	@echo "$(BLUE)════════════════════════════════════════════════════════════$(NC)"
 	@echo "  $(YELLOW)Workspace:$(NC) source-workspace"
 	@echo "  $(YELLOW)Purpose:$(NC)   Bootstrap Script Development"
-	@echo "  $(YELLOW)Version:$(NC)   2026.26"
+	@echo "  $(YELLOW)Version:$(NC)   1.0.1"
 	@echo ""
 	@echo "  $(YELLOW)Modules:$(NC)   8 Python files (3,683 LOC)"
 	@echo "  $(YELLOW)Build:$(NC)     Modular Source → Single File"

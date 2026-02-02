@@ -1,4 +1,4 @@
-# Multi-LLM Development Framework Standard v1.0
+# Multi-LLM Development Framework Standard v1.0.1
 
 **Philosophy:** "Headless Organization"
 
@@ -122,7 +122,7 @@ Every workspace has identity and version tracking:
 
 ```json
 {
-  "version": "2026.26",
+  "version": "1.0.1",
   "tier": "2",
   "name": "my-project",
   "created": "2026-01-26T10:00:00+08:00",

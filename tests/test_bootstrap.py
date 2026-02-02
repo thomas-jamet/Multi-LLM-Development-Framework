@@ -26,14 +26,13 @@ class TestConfig:
     """Tests for config.py constants and configuration."""
 
     def test_version_format(self):
-        """VERSION should be in YYYY.XX format."""
+        """VERSION should be in semantic versioning format (X.Y.Z)."""
         from config import VERSION
 
         assert VERSION is not None
         parts = VERSION.split(".")
-        assert len(parts) == 2, f"VERSION should be YYYY.XX format, got: {VERSION}"
-        assert parts[0].isdigit() and len(parts[0]) == 4, "Year should be 4 digits"
-        assert parts[1].isdigit(), "Minor version should be numeric"
+        assert len(parts) >= 2, f"VERSION should be X.Y or X.Y.Z format, got: {VERSION}"
+        assert all(p.isdigit() for p in parts), "All version parts should be numeric"
 
     def test_tiers_defined(self):
         """TIERS dictionary should contain all 3 tiers."""
@@ -127,7 +126,7 @@ class TestBuildProcess:
             "core.py",
             "providers/base.py",
             "core/makefile.py",
-            "core/templates.py",
+            "core/templates/__init__.py",  # Refactored to package
             "content_generators.py",
             "operations/create.py",
             "__main__.py",

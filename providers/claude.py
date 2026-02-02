@@ -14,7 +14,7 @@ except ImportError:
     from .base import LLMProvider
 
 # Version constant (imported from config in final build)
-VERSION = "2026.26"
+VERSION = "1.0.1"
 
 
 class ClaudeProvider(LLMProvider):
@@ -89,17 +89,12 @@ class ClaudeProvider(LLMProvider):
 
     def get_mcp_config(self) -> Dict:
         """Get MCP server configuration for Claude."""
-        return {
-            "mcpServers": {}
-        }
+        return {"mcpServers": {}}
 
     def get_settings(self, tier: str) -> Dict:
         """Get Claude-specific settings."""
         base_settings = {
-            "permissions": {
-                "allow_file_write": True,
-                "allow_shell_commands": True
-            }
+            "permissions": {"allow_file_write": True, "allow_shell_commands": True}
         }
         if tier == "3":
             base_settings["multiAgent"] = {"enabled": True}

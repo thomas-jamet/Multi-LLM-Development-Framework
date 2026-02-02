@@ -1,7 +1,7 @@
 # Bootstrap Source Architecture
 
-**Last Updated:** 2026-01-28
-**Version:** 2026.26
+**Last Updated:** 2026-02-02
+**Version:** 1.0.1
 
 ---
 
@@ -157,7 +157,7 @@ sequenceDiagram
     deactivate Build
 
     Dev->>Output: python ../bootstrap.py --version
-    Output-->>Dev: 2026.26
+    Output-->>Dev: 1.0.1
 ```
 
 ### Import Stripping Rules
@@ -183,7 +183,7 @@ The build script (`build.py`) transforms imports:
 **Purpose:** Central configuration and constants
 
 **Exports:**
-- `VERSION` - Script version (2026.26)
+- `VERSION` - Script version (1.0.1)
 - `EXIT_*` - Exit codes (SUCCESS, VALIDATION_ERROR, etc.)
 - `TIERS` - Tier definitions (Lite, Standard, Enterprise)
 - `TEMPLATES` - Built-in templates (fastapi, cli, scraper, etc.)

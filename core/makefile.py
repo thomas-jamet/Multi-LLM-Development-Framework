@@ -42,12 +42,14 @@ def get_makefile(tier: str, project_name: str, provider: str = "gemini") -> str:
     ) + _get_makefile_common_targets(tier, provider)
 
 
-def _get_makefile_tier_targets(tier: str, project_name: str, provider: str = "gemini") -> str:
+def _get_makefile_tier_targets(
+    tier: str, project_name: str, provider: str = "gemini"
+) -> str:
     """Generate tier-specific Makefile header and targets."""
     # Get provider-specific config directory
     config_dir = f".{provider}"  # .gemini, .claude, .codex
     provider_title = provider.title()  # Gemini, Claude, Codex
-    
+
     if tier == "1":
         return f"""# {provider_title} Lite Workspace
 SHELL := /bin/bash
@@ -118,6 +120,11 @@ doctor: ## Diagnose common issues and check structure
 	@command -v ruff >/dev/null 2>&1 && echo "$(GREEN)✅ ruff available$(NC)" || echo "$(YELLOW)⚠️  ruff not found (run: pip install ruff)$(NC)"
 	@echo "$(BLUE)📁 Checking structure...$(NC)"
 	@python3 scripts/run_audit.py
+
+# PURPOSE: Refresh the master index of all documents.
+index: ## Regenerate the master Table of Contents in WORKSPACE_INDEX.md
+	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
+	@python3 scripts/index_docs.py
 
 # ==============================================================================
 # ⏱️ SESSION MANAGEMENT
@@ -384,6 +391,11 @@ context-backend: ## Output backend-specific manifests
 docs: ## Generate static documentation site
 	@echo "$(BLUE)📚 Generating documentation...$(NC)"
 	@command -v mkdocs >/dev/null 2>&1 && mkdocs build || echo \\"$(YELLOW)⚠️  mkdocs not found. Install with: pip install mkdocs$(NC)\\"
+
+# PURPOSE: Refresh the master index of all documents.
+index: ## Regenerate the master Table of Contents in WORKSPACE_INDEX.md
+	@echo "$(BLUE)🗂️  Indexing documentation...$(NC)"
+	@python3 scripts/shared/index_docs.py
 
 # ==============================================================================
 # 📦 ENVIRONMENT MANAGEMENT
