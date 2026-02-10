@@ -2,7 +2,7 @@
 name = "gemini-workspace-framework"
 version = "1.0.0"
 description = "A modular, maintainable framework for building AI-assisted workspaces"
-authors = [{name = "Thomas Jamet", email = ""}]
+authors = [{name = "Thomas Jamet"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,6 +14,26 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []  # No packages - this project builds to bootstrap.py
+py-modules = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+    "ruff>=0.8.0,<0.9.0",
+    "mypy>=1.8.0,<2.0.0",
+    "bandit>=1.7.5,<2.0.0",
+    "safety>=3.0.0,<4.0.0",
+    "pre-commit>=3.6.0,<4.0.0",
 ]
 
 [project.urls]
@@ -40,10 +60,33 @@ exclude = [
     "^bootstrap\\.py$",
     "^test-workspace/",
     "^tests/",
-    "^core/",  # Excluded to avoid conflict with core.py module
 ]
 
 # Per-module options
 [[tool.mypy.overrides]]
 module = "tests.*"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "operations.output",
+    "operations.utils",
+    "operations.enterprise",
+    "operations.validation",
+    "operations.creation",
+    "operations.upgrade",
+    "operations.rollback",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+[tool.bandit]
+exclude_dirs = ["tests/", ".venv/", "test-workspace/", "venv/", "bootstrap.py"]
+skips = [
+    "B404",  # import subprocess - safe in our context
+    "B603",  # subprocess without shell=True - safe, we control inputs
+    "B607",  # Starting process with partial path (git) - acceptable
+]
+# NOTE: B202 (tarfile.extractall) will be fixed in operations/rollback.py refactor
+severity = "medium"

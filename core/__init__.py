@@ -1,24 +1,24 @@
 """Core package exports."""
 
-# Re-export from core module (core.py)
+# Re-export from core_utils module (core_utils.py)
 import sys
 from pathlib import Path
 
 # Add parent to path to allow importing sibling modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Import and re-export from the core.py file (not the package)
-# We need to be careful here - "core" is a package, but core.py is a module
+# Import and re-export from the core_utils.py file (not the package)
+# We need to be careful here - "core" is a package, but core_utils.py is a module
 # Python will import the package by default, so we use importlib
 import importlib.util
 
 spec = importlib.util.spec_from_file_location(
-    "core_module", Path(__file__).parent.parent / "core.py"
+    "core_utils_module", Path(__file__).parent.parent / "core_utils.py"
 )
 core_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core_module)
 
-# Re-export everything from core.py
+# Re-export everything from core_utils.py
 validate_project_name = core_module.validate_project_name
 success = core_module.success
 error = core_module.error

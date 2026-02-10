@@ -160,15 +160,15 @@ Skills provide AI agents with specialized knowledge for specific tasks.
 ## Workspace Tiers
 
 ### Lite (Tier 1)
-**For:** Simple scripts, utilities  
+**For:** Simple scripts, utilities
 **Has:** Basic structure, minimal overhead
 
 ### Standard (Tier 2) ⭐ Recommended
-**For:** Most projects  
+**For:** Most projects
 **Has:** Full framework, skills, workflows, documentation
 
 ### Enterprise (Tier 3)
-**For:** Complex multi-domain systems  
+**For:** Complex multi-domain systems
 **Has:** Domain separation, advanced patterns
 
 ---

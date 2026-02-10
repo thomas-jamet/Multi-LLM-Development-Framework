@@ -124,6 +124,7 @@ def read_module(path: Path) -> Tuple[str, List[str], str]:
             is_internal = (
                 "from config" in line
                 or "from core" in line
+                or "from core_utils" in line
                 or "from content_generators" in line
                 or "from operations" in line
                 or "from providers" in line
@@ -185,7 +186,7 @@ def build_bootstrap():
     # Module order (determines concatenation order, respecting dependencies)
     module_order = [
         "config.py",
-        "core.py",
+        "core_utils.py",
         "providers/base.py",
         "providers/gemini.py",
         "providers/claude.py",
@@ -201,7 +202,14 @@ def build_bootstrap():
         "core/templates/schemas.py",
         "core/templates/configs.py",
         "content_generators.py",
-        "operations/create.py",
+        "operations/output.py",
+        "operations/utils.py",
+        "operations/enterprise.py",
+        "operations/validation.py",
+        "operations/creation.py",
+        "operations/upgrade.py",
+        "operations/rollback.py",
+        "operations/__init__.py",
         "__main__.py",
     ]
 

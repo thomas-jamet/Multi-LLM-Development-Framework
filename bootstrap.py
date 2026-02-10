@@ -20,7 +20,7 @@ Features:
 
 Build Information:
     Version: 1.0.0
-    Built: 2026-02-02 13:32:01 UTC
+    Built: 2026-02-10 02:11:19 UTC
     Source: Modular architecture (bootstrap_src/)
 
 This file is AUTO-GENERATED from modular source.
@@ -39,11 +39,15 @@ from datetime import datetime, timezone
 from abc import ABC, abstractmethod
 from typing import Dict
 from typing import Optional
+from dataclasses import dataclass, asdict
+from typing import Any
 import sys
-import shutil
 import subprocess
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
+import shutil
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import tarfile
+import tempfile
 import argparse
 
 
@@ -469,7 +473,7 @@ TIERS = {
 TEMPLATES = {}
 
 # ==============================================================================
-# Module: core.py
+# Module: core_utils.py
 # ==============================================================================
 
 """
@@ -3958,14 +3962,881 @@ regexes = [
 
 
 # ==============================================================================
-# Module: operations/create.py
+# Module: operations/output.py
 # ==============================================================================
 
-"""
-Workspace Operations Module
+"""Output formatting for workspace operations.
 
-Handles workspace creation, validation, and upgrades.
+Provides structured data classes and formatters for both JSON and
+human-readable output formats.
 """
+
+
+try:
+    from core_utils import success, info, warning, error, dim
+except ImportError:
+    from ..core_utils import success, info, warning, error, dim
+
+
+@dataclass
+class WorkspaceInfo:
+    """Information about a workspace."""
+
+    name: str
+    path: str
+    tier: str
+    tier_name: str
+    template: Optional[str]
+    git_initialized: bool
+    provider: str
+    python_version: str
+
+
+@dataclass
+class CreationResult:
+    """Result of workspace creation operation."""
+
+    success: bool
+    workspace: WorkspaceInfo
+    stats: Dict[str, Any]
+    next_steps: List[str]
+    timestamp: str
+    dry_run: bool = False
+    error_message: Optional[str] = None
+
+
+@dataclass
+class ValidationResult:
+    """Result of workspace validation operation."""
+
+    valid: bool
+    path: str
+    issues: List[str]
+    timestamp: str
+    tier: Optional[str] = None
+    tier_name: Optional[str] = None
+
+
+@dataclass
+class UpgradeResult:
+    """Result of workspace upgrade operation."""
+
+    success: bool
+    path: str
+    from_tier: str
+    to_tier: str
+    changes: List[str]
+    timestamp: str
+    backup_created: bool = False
+    error_message: Optional[str] = None
+
+
+@dataclass
+class RollbackResult:
+    """Result of workspace rollback operation."""
+
+    success: bool
+    path: str
+    snapshot_id: str
+    restored_tier: Optional[str]
+    timestamp: str
+    error_message: Optional[str] = None
+
+
+class OutputFormatter:
+    """Format operation results as JSON or human-readable text."""
+
+    def __init__(self, json_mode: bool = False):
+        """Initialize formatter.
+
+        Args:
+            json_mode: If True, output JSON; otherwise output human-readable text
+        """
+        self.json_mode = json_mode
+
+    def format_creation(self, result: CreationResult) -> str:
+        """Format workspace creation result.
+
+        Args:
+            result: Creation result data
+
+        Returns:
+            Formatted output string
+        """
+        if self.json_mode:
+            return json.dumps(asdict(result), indent=2)
+        else:
+            return self._format_creation_human(result)
+
+    def _format_creation_human(self, result: CreationResult) -> str:
+        """Format creation result as human-readable text.
+
+        Args:
+            result: Creation result data
+
+        Returns:
+            Human-readable formatted string
+        """
+        lines = []
+
+        if result.dry_run:
+            lines.append(info(" [DRY RUN MODE - No files created]"))
+            lines.append("")
+
+        if result.success:
+            workspace = result.workspace
+            lines.append(success(f"Created '{workspace.name}' ({workspace.tier_name})"))
+            lines.append("")
+            lines.append(dim(f"  📁 Location: {workspace.path}"))
+            lines.append(dim(f"  🔧 Provider: {workspace.provider}"))
+            lines.append(dim(f"  🐍 Python: {workspace.python_version}"))
+
+            if workspace.git_initialized:
+                lines.append(dim("  📦 Git: initialized"))
+
+            if workspace.template:
+                lines.append(dim(f"  📋 Template: {workspace.template}"))
+
+            stats = result.stats
+            if "files_created" in stats:
+                lines.append(dim(f"  📝 Files: {stats['files_created']} created"))
+            if "dirs_created" in stats:
+                lines.append(dim(f"  📂 Directories: {stats['dirs_created']} created"))
+            if "duration_seconds" in stats:
+                lines.append(dim(f"  ⏱️  Duration: {stats['duration_seconds']:.2f}s"))
+
+            lines.append("")
+            lines.append("Next steps:")
+            for step in result.next_steps:
+                lines.append(f"  👉 {step}")
+        else:
+            lines.append(error(f"Failed to create workspace: {result.error_message}"))
+
+        return "\n".join(lines)
+
+    def format_validation(self, result: ValidationResult) -> str:
+        """Format workspace validation result.
+
+        Args:
+            result: Validation result data
+
+        Returns:
+            Formatted output string
+        """
+        if self.json_mode:
+            return json.dumps(asdict(result), indent=2)
+        else:
+            return self._format_validation_human(result)
+
+    def _format_validation_human(self, result: ValidationResult) -> str:
+        """Format validation result as human-readable text.
+
+        Args:
+            result: Validation result data
+
+        Returns:
+            Human-readable formatted string
+        """
+        lines = []
+
+        if result.valid:
+            lines.append(success(f"Workspace '{result.path}' is valid"))
+            if result.tier and result.tier_name:
+                lines.append(dim(f"  Tier: {result.tier_name}"))
+        else:
+            lines.append(error(f"Workspace '{result.path}' has issues:"))
+            for issue in result.issues:
+                lines.append(f"  ❌ {issue}")
+
+        return "\n".join(lines)
+
+    def format_upgrade(self, result: UpgradeResult) -> str:
+        """Format workspace upgrade result.
+
+        Args:
+            result: Upgrade result data
+
+        Returns:
+            Formatted output string
+        """
+        if self.json_mode:
+            return json.dumps(asdict(result), indent=2)
+        else:
+            return self._format_upgrade_human(result)
+
+    def _format_upgrade_human(self, result: UpgradeResult) -> str:
+        """Format upgrade result as human-readable text.
+
+        Args:
+            result: Upgrade result data
+
+        Returns:
+            Human-readable formatted string
+        """
+        lines = []
+
+        if result.success:
+            lines.append(
+                success(
+                    f"Upgraded workspace from Tier {result.from_tier} → {result.to_tier}"
+                )
+            )
+            lines.append(dim(f"  📁 Path: {result.path}"))
+
+            if result.backup_created:
+                lines.append(dim("  💾 Backup: created"))
+
+            if result.changes:
+                lines.append("")
+                lines.append("Changes:")
+                for change in result.changes:
+                    lines.append(f"  • {change}")
+        else:
+            lines.append(error(f"Upgrade failed: {result.error_message}"))
+
+        return "\n".join(lines)
+
+    def format_rollback(self, result: RollbackResult) -> str:
+        """Format workspace rollback result.
+
+        Args:
+            result: Rollback result data
+
+        Returns:
+            Formatted output string
+        """
+        if self.json_mode:
+            return json.dumps(asdict(result), indent=2)
+        else:
+            return self._format_rollback_human(result)
+
+    def _format_rollback_human(self, result: RollbackResult) -> str:
+        """Format rollback result as human-readable text.
+
+        Args:
+            result: Rollback result data
+
+        Returns:
+            Human-readable formatted string
+        """
+        lines = []
+
+        if result.success:
+            lines.append(
+                success(f"Rolled back workspace to snapshot {result.snapshot_id}")
+            )
+            lines.append(dim(f"  📁 Path: {result.path}"))
+            if result.restored_tier:
+                lines.append(dim(f"  📊 Tier: {result.restored_tier}"))
+        else:
+            lines.append(error(f"Rollback failed: {result.error_message}"))
+
+        return "\n".join(lines)
+
+
+# ==============================================================================
+# Module: operations/utils.py
+# ==============================================================================
+
+"""Utility functions for workspace operations.
+
+Shared helper functions used by creation, upgrade, and rollback operations.
+"""
+
+
+try:
+    from config import (
+        TIERS,
+        VERSION,
+        SCRIPT_CATEGORIES,
+        EXECUTABLE_FILES,
+        DEFAULT_REQUIREMENTS,
+        get_all_directories,
+        get_gitignore_for_tier,
+    )
+    from core_utils import header
+    from core.makefile import get_makefile
+    from core.templates import (
+        get_github_workflow,
+        get_run_audit_script,
+        get_manage_session_script,
+        get_index_docs_script,
+        get_check_status_script,
+        get_list_skills_script,
+        get_create_snapshot_script,
+        get_skillsmp_client_script,
+        get_skillsmp_search_script,
+        get_skill_discovery_workflow,
+    )
+    from content_generators import (
+        get_standard_unit_test_example,
+        get_standard_integration_test_example,
+        get_enterprise_eval_test_example,
+    )
+except ImportError:
+    # During build, imports are flat
+    from ..config import (
+        TIERS,
+        VERSION,
+        SCRIPT_CATEGORIES,
+        EXECUTABLE_FILES,
+        DEFAULT_REQUIREMENTS,
+        get_all_directories,
+        get_gitignore_for_tier,
+    )
+    from ..core import header
+    from ..core.makefile import get_makefile
+    from ..core.templates import (
+        get_github_workflow,
+        get_run_audit_script,
+        get_manage_session_script,
+        get_index_docs_script,
+        get_check_status_script,
+        get_list_skills_script,
+        get_create_snapshot_script,
+        get_skillsmp_client_script,
+        get_skillsmp_search_script,
+        get_skill_discovery_workflow,
+    )
+    from ..content_generators import (
+        get_standard_unit_test_example,
+        get_standard_integration_test_example,
+        get_enterprise_eval_test_example,
+    )
+
+
+def _get_script_path(tier: str, script_name: str) -> str:
+    """Get tier-specific path for a script.
+
+    Args:
+        tier: Workspace tier ("1", "2", or "3")
+        script_name: Script name without extension (e.g., "run_audit")
+
+    Returns:
+        Full path relative to workspace root (e.g., "scripts/workspace/run_audit.py")
+    """
+    if tier == "1":  # Lite: flat structure
+        return f"scripts/{script_name}.py"
+    elif tier == "2":  # Standard: categorized
+        # Find which category this script belongs to
+        for category, scripts in SCRIPT_CATEGORIES["2"].items():
+            if script_name in scripts:
+                return f"scripts/{category}/{script_name}.py"
+        # Fallback
+        return f"scripts/{script_name}.py"
+    else:  # Enterprise: domain-based
+        # Default to shared for standard scripts
+        for category, scripts in SCRIPT_CATEGORIES["3"].items():
+            if script_name in scripts:
+                return f"scripts/{category}/{script_name}.py"
+        # Fallback
+        return f"scripts/shared/{script_name}.py"
+
+
+def _build_workspace_directories(
+    tier: str, pkg_name: str, provider: str = "gemini", domain: str = "core"
+) -> List[str]:
+    """Build list of directories to create.
+
+    Args:
+        tier: Workspace tier ("1", "2", or "3")
+        pkg_name: Package name (for src directory)
+        provider: LLM provider name
+        domain: Enterprise domain name (used for tier 3)
+
+    Returns:
+        Sorted list of directory paths to create
+    """
+    # Import provider to get config_dirname
+    from providers import get_provider
+
+    provider_obj = get_provider(provider)
+
+    dirs = get_all_directories(tier).copy()
+
+    # Add provider config directory
+    dirs.append(provider_obj.config_dirname.lstrip("."))
+
+    # Add script category directories based on tier
+    if tier == "2":  # Standard: categorized structure
+        for category in SCRIPT_CATEGORIES["2"].keys():
+            if category:  # Skip empty key (flat dirs)
+                dirs.append(f"scripts/{category}")
+    elif tier == "3":  # Enterprise: domain-based structure
+        for category in SCRIPT_CATEGORIES["3"].keys():
+            if category:  # Skip empty key
+                dirs.append(f"scripts/{category}")
+
+    # Add data directories based on tier (Tiered Data Pattern)
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        dirs.extend(["data/inputs", "data/outputs"])
+    else:  # Enterprise: domain-based data structure
+        dirs.extend([f"data/{domain}/inputs", f"data/{domain}/outputs", "data/shared"])
+
+    if tier != "1":
+        dirs.append(f"src/{pkg_name}")
+
+    return sorted(list(set(dirs)))
+
+
+def _build_workspace_files(
+    tier: str,
+    name: str,
+    pkg_name: str,
+    parent: str | None,
+    python_version: str,
+    template_files: dict | None,
+    template_deps: list | None,
+    provider: str = "gemini",
+    domain: str = "core",
+) -> Dict[str, str]:
+    """Build dictionary of {path: content} for all workspace files.
+
+    Args:
+        tier: Workspace tier
+        name: Workspace name
+        pkg_name: Package name
+        parent: Parent workspace path (for monorepos)
+        python_version: Python version for CI
+        template_files: Optional template file overrides
+        template_deps: Optional template dependencies
+        provider: LLM provider
+        domain: Enterprise domain name
+
+    Returns:
+        Dictionary mapping file paths to their contents
+    """
+    from providers import get_provider
+
+    provider_obj = get_provider(provider)
+
+    files = {}
+
+    # Core - use provider-specific config filename
+    files[provider_obj.config_filename] = provider_obj.get_config_template(
+        tier, pkg_name
+    )
+    files["Makefile"] = get_makefile(tier, pkg_name, provider)
+    files["README.md"] = (
+        f"# {name}\n\nGenerated {provider_obj.name.title()} Workspace ({TIERS[tier]['name']})\n"
+    )
+    files[".gitignore"] = "\n".join(get_gitignore_for_tier(tier))
+
+    # Provider-specific configuration directory
+    config_dir = provider_obj.config_dirname
+    files[f"{config_dir}/workspace.json"] = json.dumps(
+        {
+            "version": VERSION,
+            "tier": tier,
+            "name": name,
+            "provider": provider,
+            "created": datetime.now(timezone.utc).astimezone().isoformat(),
+            "standard": "Multi-LLM Development Framework",
+            "parent_workspace": parent,
+        },
+        indent=2,
+    )
+
+    # Scripts - use tier-specific paths
+    files[_get_script_path(tier, "run_audit")] = get_run_audit_script()
+    files[_get_script_path(tier, "manage_session")] = get_manage_session_script()
+    files[_get_script_path(tier, "index_docs")] = get_index_docs_script()
+    files[_get_script_path(tier, "check_status")] = get_check_status_script()
+    files[_get_script_path(tier, "list_skills")] = get_list_skills_script()
+
+    # Snapshot script for Standard and Enterprise tiers
+    if tier in ["2", "3"]:
+        files[_get_script_path(tier, "create_snapshot")] = get_create_snapshot_script()
+
+    # SkillsMP Discovery (Standard & Enterprise only)
+    if tier != "1":
+        # Add SkillsMP client and search script to scripts/shared/
+        files["scripts/shared/skillsmp_client.py"] = get_skillsmp_client_script()
+        files["scripts/shared/skillsmp_search.py"] = get_skillsmp_search_script()
+        files[".agent/workflows/shared/discover_skills.md"] = (
+            get_skill_discovery_workflow()
+        )
+
+    # Documentation
+    files["docs/roadmap.md"] = f"# Roadmap: {name}\n\n- [ ] Initial Setup"
+
+    # CI/CD
+    files[".github/workflows/ci.yml"] = get_github_workflow(tier, python_version)
+
+    # Python files for Tier 2+
+    if tier != "1":
+        files["pyproject.toml"] = (
+            f'[project]\nname = "{pkg_name}"\nversion = "0.1.0"\nrequires-python = ">={python_version}"\ndependencies = []'
+        )
+        files[f"src/{pkg_name}/__init__.py"] = ""
+        files[f"src/{pkg_name}/main.py"] = """def main():
+    print("Hello World")
+
+if __name__ == "__main__":
+    main()
+"""
+
+        # Tests
+        if tier == "2":
+            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(
+                pkg_name
+            )
+            files["tests/integration/test_integration.py"] = (
+                get_standard_integration_test_example(pkg_name)
+            )
+        elif tier == "3":
+            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(
+                pkg_name
+            )
+            files["tests/integration/test_integration.py"] = (
+                get_standard_integration_test_example(pkg_name)
+            )
+            files["tests/evals/test_evals.py"] = get_enterprise_eval_test_example(
+                pkg_name
+            )
+    else:
+        files["src/main.py"] = 'print("Hello World")'
+        files["requirements.txt"] = "\n".join(DEFAULT_REQUIREMENTS["1"])
+
+    # Add .gitkeep files for hygiene and data directories
+    files["logs/.gitkeep"] = ""
+    files["scratchpad/.gitkeep"] = ""
+
+    # Add .gitkeep for data directories based on tier
+    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
+        files["data/inputs/.gitkeep"] = ""
+    else:  # Enterprise: domain-based data structure
+        files[f"data/{domain}/inputs/.gitkeep"] = ""
+        files["data/shared/.gitkeep"] = ""
+
+    return files
+
+
+def _write_file_safe(base: Path, path_str: str, content: str):
+    """Write file safely with error handling (for thread pool).
+
+    Args:
+        base: Base directory path
+        path_str: Relative file path
+        content: File content
+
+    Returns:
+        Tuple of (path_str, error_message or None)
+    """
+    target = base / path_str
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        if path_str in EXECUTABLE_FILES:
+            target.chmod(0o755)
+        return path_str, None
+    except Exception as e:
+        return path_str, str(e)
+
+
+def _safe_tar_extract(tar, path):
+    """Safely extract tar archive with path traversal protection.
+
+    Args:
+        tar: TarFile object
+        path: Destination path
+
+    Raises:
+        ValueError: If archive contains unsafe paths
+    """
+    dest_path = Path(path).resolve()
+
+    for member in tar.getmembers():
+        # Resolve member path
+        member_path = (dest_path / member.name).resolve()
+
+        # Ensure member path is within destination
+        if not str(member_path).startswith(str(dest_path)):
+            raise ValueError(
+                f"Unsafe tar member: {member.name} (path traversal attempt)"
+            )
+
+    # Extract after validation
+    tar.extractall(path)  # nosec B202 - validated above
+
+
+def show_dry_run_summary(tier: str, name: str, template_name: str | None, cwd: str):
+    """Show dry run summary.
+
+    Args:
+        tier: Workspace tier
+        name: Workspace name
+        template_name: Template name (if used)
+        cwd: Current working directory
+    """
+    header(f"Dry Run: Creating {name}")
+    print(f"Tier: {tier} ({TIERS[tier]['name']})")
+    print(f"Path: {cwd}/{name}")
+
+
+def log_bootstrap_event(*args, **kwargs):
+    """Telemetry placeholder (not implemented)."""
+    pass
+
+
+def get_shift_report_script():
+    """Get shift report script content (placeholder).
+
+    Returns:
+        Script content string
+    """
+    return "# Shift Report\n"
+
+
+def get_vscode_settings():
+    """Get VSCode settings content (placeholder).
+
+    Returns:
+        JSON settings string
+    """
+    return "{}"
+
+
+def get_settings(tier: str):
+    """Get workspace settings content (placeholder).
+
+    Args:
+        tier: Workspace tier
+
+    Returns:
+        JSON settings string
+    """
+    return "{}"
+
+
+# ==============================================================================
+# Module: operations/enterprise.py
+# ==============================================================================
+
+"""Enterprise tier domain-based workspace organization.
+
+Implements domain detection and inference for Enterprise workspaces.
+"""
+
+
+def get_enterprise_domain(name: str, template_files: Optional[Dict] = None) -> str:
+    """Determine enterprise domain for data organization.
+
+    Common domains: core, ml, data, api, analytics
+
+    Args:
+        name: Workspace project name
+        template_files: Optional template metadata with explicit domain
+
+    Returns:
+        Domain name for directory structure (e.g., "ml", "data", "core")
+
+    Examples:
+        >>> get_enterprise_domain("ml-pipeline")
+        'ml'
+        >>> get_enterprise_domain("customer-api")
+        'api'
+        >>> get_enterprise_domain("my-project")
+        'core'
+    """
+    # Check template for explicit domain
+    if template_files and "domain" in template_files:
+        return template_files["domain"]
+
+    # Infer from project name
+    name_lower = name.lower()
+    domain_keywords = {
+        "ml": ["ml", "machine-learning", "ai", "model", "training"],
+        "data": ["data", "etl", "pipeline", "warehouse"],
+        "api": ["api", "service", "gateway", "rest", "graphql"],
+        "analytics": ["analytics", "reporting", "dashboard", "bi"],
+    }
+
+    for domain, keywords in domain_keywords.items():
+        if any(kw in name_lower for kw in keywords):
+            return domain
+
+    return "core"  # default
+
+
+# ==============================================================================
+# Module: operations/validation.py
+# ==============================================================================
+
+"""Workspace validation operations.
+
+Validates existing workspaces against the Multi-LLM Development Framework standard.
+"""
+
+
+try:
+    from core_utils import (
+        success,
+        error,
+        info,
+        header,
+        ValidationError,
+        ConfigurationError,
+        _get_file_cache_key,
+    )
+except ImportError:
+    # During build, imports are flat
+    from ..core_utils import (
+        success,
+        error,
+        info,
+        header,
+        ValidationError,
+        ConfigurationError,
+        _get_file_cache_key,
+    )
+
+
+@lru_cache(maxsize=128)
+def _validate_workspace_impl(base_path: str, cache_key: str) -> tuple[dict, list]:
+    """Internal implementation for workspace validation (cached).
+
+    Args:
+        base_path: Path to workspace
+        cache_key: Cache invalidation key (based on workspace.json mtime)
+
+    Returns:
+        Tuple of (workspace_dict, issues_list)
+    """
+    base = Path(base_path)
+    issues = []
+
+    ws_file = base / ".gemini/workspace.json"
+    if not ws_file.exists():
+        return {}, ["Missing .gemini/workspace.json"]
+
+    try:
+        with open(ws_file) as f:
+            ws = json.load(f)
+    except json.JSONDecodeError as e:
+        return {}, [f"Invalid workspace.json: {e}"]
+    except PermissionError:
+        return {}, ["Cannot read workspace.json (permission denied)"]
+
+    # Basic validation checks
+    if "tier" not in ws:
+        issues.append("Missing 'tier' in workspace.json")
+    if "version" not in ws:
+        issues.append("Missing 'version' in workspace.json")
+
+    return ws, issues
+
+
+@lru_cache(maxsize=128)
+def validate_workspace(path: str) -> None:
+    """Validate an existing workspace against the standard.
+
+    Args:
+        path: Path to workspace to validate
+
+    Raises:
+        ValidationError: If workspace fails validation checks
+        ConfigurationError: If workspace.json is malformed
+
+    Note:
+        This function uses caching to avoid redundant validation checks.
+        Cache is automatically invalidated when workspace.json is modified.
+    """
+    base = Path(path).resolve()
+
+    header(f"Validating: {base.name}")
+
+    # Generate cache key based on workspace.json modification time
+    ws_file = base / ".gemini/workspace.json"
+    cache_key = _get_file_cache_key(ws_file) if ws_file.exists() else "missing"
+
+    # Use cached validation
+    ws, issues = _validate_workspace_impl(str(base), cache_key)
+
+    info(f"Workspace version: {ws.get('version', 'unknown')}")
+    info(f"Tier: {ws.get('tier', 'unknown')}")
+
+    # Run audit script if exists (not cached due to external execution)
+    audit_script = base / "scripts/audit.py"
+    if audit_script.exists():
+        result = subprocess.run(
+            [sys.executable, str(audit_script)], cwd=base, timeout=30
+        )
+        if result.returncode != 0:
+            raise ValidationError(
+                f"Audit script failed with exit code {result.returncode}"
+            )
+    elif issues:
+        # Report cached validation issues
+        error("Validation failed:")
+        for i in issues:
+            print(f"   - {i}")
+        raise ValidationError(f"Validation failed: {len(issues)} issues found")
+    else:
+        success("Validation passed")
+
+
+# ==============================================================================
+# Module: operations/creation.py
+# ==============================================================================
+
+"""Workspace creation operations.
+
+Handles creation of new workspaces with tier-specific configurations.
+"""
+
+
+try:
+    from config import (
+        TIERS,
+        TEMPLATES,
+        DEFAULT_PYTHON_VERSION,
+        DEFAULT_PROVIDER,
+    )
+    from core_utils import (
+        validate_project_name,
+        success,
+        error,
+        warning,
+        info,
+        header,
+        dim,
+        CreationError,
+    )
+    from operations.utils import (
+        _build_workspace_directories,
+        _build_workspace_files,
+        _write_file_safe,
+        show_dry_run_summary,
+        log_bootstrap_event,
+    )
+    from operations.enterprise import get_enterprise_domain
+except ImportError:
+    # During build, imports are flat
+    from ..config import (
+        TIERS,
+        TEMPLATES,
+        DEFAULT_PYTHON_VERSION,
+        DEFAULT_PROVIDER,
+    )
+    from ..core_utils import (
+        validate_project_name,
+        success,
+        error,
+        warning,
+        info,
+        header,
+        dim,
+        CreationError,
+    )
+    from .utils import (
+        _build_workspace_directories,
+        _build_workspace_files,
+        _write_file_safe,
+        show_dry_run_summary,
+        log_bootstrap_event,
+    )
+    from .enterprise import get_enterprise_domain
 
 
 def create_workspace(
@@ -4057,8 +4928,13 @@ def create_workspace(
                 f"Directory '{name}' already exists. Use --force to overwrite."
             )
 
+    # Get domain for enterprise tier
+    domain = "core"  # default
+    if tier == "3":
+        domain = get_enterprise_domain(name, template_files)
+
     # Use helper functions to build structure
-    dirs = _build_workspace_directories(tier, pkg_name, provider)
+    dirs = _build_workspace_directories(tier, pkg_name, provider, domain)
     files = _build_workspace_files(
         tier,
         name,
@@ -4068,6 +4944,7 @@ def create_workspace(
         template_files,
         template_deps,
         provider,
+        domain,
     )
 
     # --- DRY RUN ---
@@ -4223,97 +5100,58 @@ def create_workspace(
     print("   👉 cat docs/GETTING_STARTED.md")
 
 
-# --- VALIDATE EXISTING WORKSPACE ---
+# ==============================================================================
+# Module: operations/upgrade.py
+# ==============================================================================
+
+"""Workspace upgrade operations.
+
+Handles upgrading workspaces to higher tiers.
+"""
 
 
-@lru_cache(maxsize=128)
-def _validate_workspace_impl(base_path: str, cache_key: str):
-    """Internal implementation for workspace validation (cached).
-
-    Args:
-        base_path: Path to workspace
-        cache_key: Cache invalidation key (based on workspace.json mtime)
-
-    Returns:
-        Tuple of (workspace_dict, issues_list)
-    """
-    base = Path(base_path)
-    issues = []
-
-    ws_file = base / ".gemini/workspace.json"
-    if not ws_file.exists():
-        return {}, ["Missing .gemini/workspace.json"]
-
-    try:
-        with open(ws_file) as f:
-            ws = json.load(f)
-    except json.JSONDecodeError as e:
-        return {}, [f"Invalid workspace.json: {e}"]
-    except PermissionError:
-        return {}, ["Cannot read workspace.json (permission denied)"]
-
-    # Basic validation checks
-    if "tier" not in ws:
-        issues.append("Missing 'tier' in workspace.json")
-    if "version" not in ws:
-        issues.append("Missing 'version' in workspace.json")
-
-    return ws, issues
-
-
-@lru_cache(maxsize=128)
-def validate_workspace(path: str):
-    """Validate an existing workspace against the standard.
-
-    Args:
-        path: Path to workspace to validate
-
-    Raises:
-        ValidationError: If workspace fails validation checks
-        ConfigurationError: If workspace.json is malformed
-
-    Note:
-        This function uses caching to avoid redundant validation checks.
-        Cache is automatically invalidated when workspace.json is modified.
-    """
-    base = Path(path).resolve()
-
-    header(f"Validating: {base.name}")
-
-    # Generate cache key based on workspace.json modification time
-    ws_file = base / ".gemini/workspace.json"
-    cache_key = _get_file_cache_key(ws_file) if ws_file.exists() else "missing"
-
-    # Use cached validation
-    ws, issues = _validate_workspace_impl(str(base), cache_key)
-
-    info(f"Workspace version: {ws.get('version', 'unknown')}")
-    info(f"Tier: {ws.get('tier', 'unknown')}")
-
-    # Run audit script if exists (not cached due to external execution)
-    audit_script = base / "scripts/audit.py"
-    if audit_script.exists():
-        result = subprocess.run(
-            [sys.executable, str(audit_script)], cwd=base, timeout=30
-        )
-        if result.returncode != 0:
-            raise ValidationError(
-                f"Audit script failed with exit code {result.returncode}"
-            )
-    elif issues:
-        # Report cached validation issues
-        error("Validation failed:")
-        for i in issues:
-            print(f"   - {i}")
-        raise ValidationError(f"Validation failed: {len(issues)} issues found")
-    else:
-        success("Validation passed")
+try:
+    from config import TIERS
+    from core_utils import (
+        success,
+        warning,
+        info,
+        header,
+        _c,
+        Colors,
+        ValidationError,
+        ConfigurationError,
+        UpgradeError,
+    )
+    from core.templates import get_gemini_md, get_github_workflow
+    from core.makefile import get_makefile
+    from operations.utils import (
+        get_shift_report_script,
+        get_vscode_settings,
+        get_settings,
+    )
+except ImportError:
+    # During build, imports are flat
+    from ..config import TIERS
+    from ..core_utils import (
+        success,
+        warning,
+        info,
+        header,
+        _c,
+        Colors,
+        ValidationError,
+        ConfigurationError,
+        UpgradeError,
+    )
+    from ..core.templates import get_gemini_md, get_github_workflow
+    from ..core.makefile import get_makefile
+    from .utils import get_shift_report_script, get_vscode_settings, get_settings
 
 
-# --- UPGRADE WORKSPACE ---
-
-
-def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = False):
+def upgrade_workspace(
+    path: str, target_tier: str | None = None, yes: bool = False
+) -> None:
     """Upgrade a workspace to a higher tier.
 
     Args:
@@ -4529,13 +5367,74 @@ def upgrade_workspace(path: str, target_tier: str | None = None, yes: bool = Fal
     (base / ".gemini/settings.json").write_text(get_settings(final_target))
 
     success(f"Upgraded to {TIERS[final_target]['name']}")
-    warning("Review GEMINI.md and Makefile for tier-specific changes")
 
 
-# --- UPDATE SCRIPTS ---
+# ==============================================================================
+# Module: operations/rollback.py
+# ==============================================================================
+
+"""Workspace rollback operations.
+
+Handles restoring workspaces from backups or snapshots.
+"""
 
 
-def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = False):
+try:
+    from config import SNAPSHOTS_DIR
+    from core_utils import (
+        success,
+        warning,
+        info,
+        header,
+        _c,
+        Colors,
+        ValidationError,
+        RollbackError,
+    )
+except ImportError:
+    # During build, imports are flat
+    from ..config import SNAPSHOTS_DIR
+    from ..core_utils import (
+        success,
+        warning,
+        info,
+        header,
+        _c,
+        Colors,
+        ValidationError,
+        RollbackError,
+    )
+
+
+def _safe_tar_extract(tar: tarfile.TarFile, path: str) -> None:
+    """Safely extract tar archive with path traversal protection.
+
+    Args:
+        tar: TarFile object
+        path: Destination path
+
+    Raises:
+        ValueError: If archive contains unsafe paths
+    """
+    dest_path = Path(path).resolve()
+
+    for member in tar.getmembers():
+        # Resolve member path
+        member_path = (dest_path / member.name).resolve()
+
+        # Ensure member path is within destination
+        if not str(member_path).startswith(str(dest_path)):
+            raise ValueError(
+                f"Unsafe tar member: {member.name} (path traversal attempt)"
+            )
+
+    # Extract after validation
+    tar.extractall(path)  # nosec B202 - validated above
+
+
+def rollback_workspace(
+    path: str, backup_name: str | None = None, yes: bool = False
+) -> None:
     """Rollback workspace to a previous state from backup or snapshot.
 
     Args:
@@ -4575,9 +5474,6 @@ def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = Fa
                     return
 
             try:
-                import tarfile
-                import tempfile
-
                 # Extract to temp directory first
                 with tempfile.TemporaryDirectory() as temp_dir:
                     with tarfile.open(snapshot_file, "r:gz") as tar:
@@ -4585,7 +5481,8 @@ def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = Fa
                         if sys.version_info >= (3, 12):
                             tar.extractall(temp_dir, filter="data")
                         else:
-                            tar.extractall(temp_dir)
+                            # Python 3.11: manual validation
+                            _safe_tar_extract(tar, temp_dir)
 
                     # Copy files from temp to workspace
                     temp_path = Path(temp_dir)
@@ -4707,228 +5604,34 @@ def rollback_workspace(path: str, backup_name: str | None = None, yes: bool = Fa
     warning("Rollback complete - verify workspace with 'make audit' and 'make doctor'")
 
 
-# --- EXPORT WORKSPACE AS TEMPLATE ---
-# --- INTERNAL HELPER FUNCTIONS ---
+# ==============================================================================
+# Module: operations/__init__.py
+# ==============================================================================
 
+"""Operations module public API.
 
-def _get_script_path(tier: str, script_name: str) -> str:
-    """Get tier-specific path for a script.
-
-    Args:
-        tier: Workspace tier ("1", "2", or "3")
-        script_name: Script name without extension (e.g., "run_audit")
-
-    Returns:
-        Full path relative to workspace root (e.g., "scripts/workspace/run_audit.py")
-    """
-    if tier == "1":  # Lite: flat structure
-        return f"scripts/{script_name}.py"
-    elif tier == "2":  # Standard: categorized
-        # Find which category this script belongs to
-        for category, scripts in SCRIPT_CATEGORIES["2"].items():
-            if script_name in scripts:
-                return f"scripts/{category}/{script_name}.py"
-        # Fallback
-        return f"scripts/{script_name}.py"
-    else:  # Enterprise: domain-based
-        # Default to shared for standard scripts
-        for category, scripts in SCRIPT_CATEGORIES["3"].items():
-            if script_name in scripts:
-                return f"scripts/{category}/{script_name}.py"
-        # Fallback
-        return f"scripts/shared/{script_name}.py"
-
-
-def _build_workspace_directories(
-    tier: str, pkg_name: str, provider: str = "gemini"
-) -> List[str]:
-    """Build list of directories to create."""
-    # Import provider to get config_dirname
-    from providers import get_provider
-
-    provider_obj = get_provider(provider)
-
-    dirs = get_all_directories(tier).copy()
-
-    # Add provider config directory
-    dirs.append(provider_obj.config_dirname.lstrip("."))
-
-    # Add script category directories based on tier
-    if tier == "2":  # Standard: categorized structure
-        for category in SCRIPT_CATEGORIES["2"].keys():
-            if category:  # Skip empty key (flat dirs)
-                dirs.append(f"scripts/{category}")
-    elif tier == "3":  # Enterprise: domain-based structure
-        for category in SCRIPT_CATEGORIES["3"].keys():
-            if category:  # Skip empty key
-                dirs.append(f"scripts/{category}")
-
-    # Add data directories based on tier (Tiered Data Pattern)
-    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
-        dirs.extend(["data/inputs", "data/outputs"])
-    else:  # Enterprise: domain-based data structure
-        # TODO: Implement domain prompting for Enterprise
-        domain = "core"  # Default for now
-        dirs.extend([f"data/{domain}/inputs", f"data/{domain}/outputs", "data/shared"])
-
-    if tier != "1":
-        dirs.append(f"src/{pkg_name}")
-
-    return sorted(list(set(dirs)))
-
-
-def _build_workspace_files(
-    tier: str,
-    name: str,
-    pkg_name: str,
-    parent: str | None,
-    python_version: str,
-    template_files: dict | None,
-    template_deps: list | None,
-    provider: str = "gemini",
-) -> Dict[str, str]:
-    """Build dictionary of {path: content} for all workspace files."""
-    from providers import get_provider
-
-    provider_obj = get_provider(provider)
-
-    files = {}
-
-    # Core - use provider-specific config filename
-    files[provider_obj.config_filename] = provider_obj.get_config_template(
-        tier, pkg_name
-    )
-    files["Makefile"] = get_makefile(tier, pkg_name, provider)
-    files["README.md"] = (
-        f"# {name}\n\nGenerated {provider_obj.name.title()} Workspace ({TIERS[tier]['name']})\n"
-    )
-    files[".gitignore"] = "\n".join(get_gitignore_for_tier(tier))
-
-    # Provider-specific configuration directory
-    config_dir = provider_obj.config_dirname
-    files[f"{config_dir}/workspace.json"] = json.dumps(
-        {
-            "version": VERSION,
-            "tier": tier,
-            "name": name,
-            "provider": provider,
-            "created": datetime.now(timezone.utc).astimezone().isoformat(),
-            "standard": "Multi-LLM Development Framework",
-            "parent_workspace": parent,
-        },
-        indent=2,
-    )
-
-    # Scripts - use tier-specific paths
-    files[_get_script_path(tier, "run_audit")] = get_run_audit_script()
-    files[_get_script_path(tier, "manage_session")] = get_manage_session_script()
-    files[_get_script_path(tier, "index_docs")] = get_index_docs_script()
-    files[_get_script_path(tier, "check_status")] = get_check_status_script()
-    files[_get_script_path(tier, "list_skills")] = get_list_skills_script()
-
-    # Snapshot script for Standard and Enterprise tiers
-    if tier in ["2", "3"]:
-        files[_get_script_path(tier, "create_snapshot")] = get_create_snapshot_script()
-
-    # SkillsMP Discovery (Standard & Enterprise only)
-    if tier != "1":
-        # Add SkillsMP client and search script to scripts/shared/
-        files["scripts/shared/skillsmp_client.py"] = get_skillsmp_client_script()
-        files["scripts/shared/skillsmp_search.py"] = get_skillsmp_search_script()
-        files[".agent/workflows/shared/discover_skills.md"] = (
-            get_skill_discovery_workflow()
-        )
-
-    # Documentation
-    files["docs/roadmap.md"] = f"# Roadmap: {name}\n\n- [ ] Initial Setup"
-
-    # CI/CD
-    files[".github/workflows/ci.yml"] = get_github_workflow(tier, python_version)
-
-    # Python files for Tier 2+
-    if tier != "1":
-        files["pyproject.toml"] = (
-            f'[project]\nname = "{pkg_name}"\nversion = "0.1.0"\nrequires-python = ">={python_version}"\ndependencies = []'
-        )
-        files[f"src/{pkg_name}/__init__.py"] = ""
-        files[f"src/{pkg_name}/main.py"] = """def main():
-    print("Hello World")
-
-if __name__ == "__main__":
-    main()
+This module provides the main operations for workspace management:
+- create_workspace: Create a new workspace
+- validate_workspace: Validate an existing workspace
+- upgrade_workspace: Upgrade workspace to next tier
+- rollback_workspace: Rollback workspace from backup
+- get_enterprise_domain: Get enterprise domain configuration
+- OutputFormatter: Format operation results
+- CreationResult: Data class for creation results
+- ValidationResult: Data class for validation results
 """
 
-        # Tests
-        if tier == "2":
-            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(
-                pkg_name
-            )
-            files["tests/integration/test_integration.py"] = (
-                get_standard_integration_test_example(pkg_name)
-            )
-        elif tier == "3":
-            files[f"tests/unit/test_{pkg_name}.py"] = get_standard_unit_test_example(
-                pkg_name
-            )
-            files["tests/integration/test_integration.py"] = (
-                get_standard_integration_test_example(pkg_name)
-            )
-            files["tests/evals/test_evals.py"] = get_enterprise_eval_test_example(
-                pkg_name
-            )
-    else:
-        files["src/main.py"] = 'print("Hello World")'
-        files["requirements.txt"] = "\n".join(DEFAULT_REQUIREMENTS["1"])
 
-    # Add .gitkeep files for hygiene and data directories
-    files["logs/.gitkeep"] = ""
-    files["scratchpad/.gitkeep"] = ""
-
-    # Add .gitkeep for data directories based on tier
-    if tier in ["1", "2"]:  # Lite/Standard: flat data structure
-        files["data/inputs/.gitkeep"] = ""
-    else:  # Enterprise: domain-based data structure
-        domain = "core"  # Match domain from _build_workspace_directories
-        files[f"data/{domain}/inputs/.gitkeep"] = ""
-        files["data/shared/.gitkeep"] = ""
-
-    return files
-
-
-def _write_file_safe(base: Path, path_str: str, content: str):
-    """Write file safely with error handling (for thread pool)."""
-    target = base / path_str
-    try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
-        if path_str in EXECUTABLE_FILES:
-            target.chmod(0o755)
-        return path_str, None
-    except Exception as e:
-        return path_str, str(e)
-
-
-def show_dry_run_summary(tier, name, template_name, cwd):
-    header(f"Dry Run: Creating {name}")
-    print(f"Tier: {tier} ({TIERS[tier]['name']})")
-    print(f"Path: {cwd}/{name}")
-
-
-def log_bootstrap_event(*args, **kwargs):
-    pass  # Telemetry placeholder
-
-
-def get_shift_report_script():
-    return "# Shift Report\n"
-
-
-def get_vscode_settings():
-    return "{}"
-
-
-def get_settings(tier):
-    return "{}"
-
+__all__ = [
+    "create_workspace",
+    "validate_workspace",
+    "upgrade_workspace",
+    "rollback_workspace",
+    "get_enterprise_domain",
+    "OutputFormatter",
+    "CreationResult",
+    "ValidationResult",
+]
 
 # ==============================================================================
 # Module: __main__.py
@@ -5125,6 +5828,11 @@ After creation:
         "--no-color",
         action="store_true",
         help="Disable colored output (for CI/logging)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results in JSON format for machine parsing",
     )
     parser.add_argument(
         "--shared-agent", help="Path to shared .agent/ directory (symlink)"

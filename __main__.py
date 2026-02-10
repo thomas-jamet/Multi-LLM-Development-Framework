@@ -196,6 +196,11 @@ After creation:
         help="Disable colored output (for CI/logging)",
     )
     parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results in JSON format for machine parsing",
+    )
+    parser.add_argument(
         "--shared-agent", help="Path to shared .agent/ directory (symlink)"
     )
     parser.add_argument("--parent", help="Parent workspace path (for monorepos)")
